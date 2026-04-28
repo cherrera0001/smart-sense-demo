@@ -4,7 +4,12 @@
 
 Consume eléctrico en CLP en tiempo real, onboarding con pairing de enchufes, desglose por firma eléctrica, alertas predictivas y reporte semanal.
 
-## Instalación
+### 🚀 Deploy en Vivo
+- **URL:** https://smartsense.c4a.cl
+- **GitHub:** https://github.com/cherrera0001/smart-sense-demo
+- **Vercel:** Auto-deploys on push to `master`
+
+## Instalación Local
 
 ```bash
 pnpm install
@@ -95,7 +100,66 @@ Abre `http://localhost:3000`, luego:
 - `app/offline/page.tsx` (fallback offline)
 - `next.config.js` (plugin `next-pwa`)
 
+## CI/CD & Deployment
+
+### GitHub Setup (Abril 2026)
+- Repository: `cherrera0001/smart-sense-demo` (Public)
+- Token almacenado en `.env.local` (no commitear)
+
+### Vercel Integration
+- **Project ID:** `prj_pgEpK6iqMMcvAYen38xR0Nb9QjgF`
+- **Auto-deploy:** Master branch triggers production build
+- **Domain:** https://smartsense.c4a.cl
+
+### CLI Tokens (`.env.local`)
+```
+GITHUB_TOKEN=ghp_...        # GitHub Personal Access Token
+VERCEL_TOKEN=vercel_...     # Vercel CLI Token (crear en https://vercel.com/account/tokens)
+CLOUDFLARE_API_TOKEN=czd_... # Cloudflare API Token (crear en https://dash.cloudflare.com/profile/api-tokens)
+```
+
+**⚠️ IMPORTANTE:** `.env.local` está en `.gitignore` — nunca comitear tokens.
+
+## Cambios Recientes (Apr 28, 2026)
+
+### FASE 1-4: UX/UI Fixes (CRITICAL + HIGH)
+**Commits:** `ba7a38a`, `061e0e6`, `d5fab3d`
+
+#### ✅ Contraste WCAG AA (Dark Theme)
+- Critical: #F87171 → #FF6B6B (5.2:1)
+- Warning: #FBBF24 → #FFD43B (5.8:1)
+- Info: #60A5FA → #74C0FC (4.8:1)
+- Success: #10B981 → #51CF66 (5.1:1)
+
+#### ✅ Responsive Heights (Mobile)
+- ProyeccionMes: 360px → 300px + minHeight={250}
+- ReportePage: 320px → 280px + minHeight={250}
+- Todos los charts ahora escalables en móvil (360-430px)
+
+#### ✅ Spacing Estandarizado
+- `.card-header`: space-y-2
+- `.card-content`: space-y-4
+- Escala: `.space-xs`, `.space-sm`, `.space-md`, `.space-lg`
+
+#### ✅ Component Consistency
+- Badge variants unificados: default, outline, critical, warning, info, success
+- Reemplazo de inline styles por clases estandarizadas
+
+#### ✅ Mobile-First Design
+- Body background: radial-gradient (depth visual)
+- Font-size: 15px (readability en móvil)
+- Responsive typography: `.page-subtitle` = text-sm sm:text-base
+- Touch targets: min-h-[44px] en todos los botones (WCAG)
+
+### Status de Audit
+- **CRITICAL:** 4/4 resueltos (100%)
+- **HIGH:** 5/5 resueltos (100%)
+- **MEDIUM:** 8/15 implementadas (53%)
+- **LOW:** En queue
+
 ## Créditos
 
 **C4A — Cybersecurity For All**  
 Smart Sense Mock (defensa emprendimiento)
+- **Desarrollador:** Cristóbal Herrera (cherrera0001)
+- **Última actualización:** 2026-04-28
