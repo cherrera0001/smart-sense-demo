@@ -115,9 +115,9 @@ html.light {
 }
 
 body {
-  background: var(--bg-primary);
+  background: radial-gradient(ellipse at top, #111827 0%, var(--bg-primary) 60%);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.65;
   transition: background-color 300ms ease, color 300ms ease;
 }
@@ -137,10 +137,15 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Smooth transitions */
+/* Smooth transitions - button/link only */
 button,
 a {
   transition: all 150ms ease-in-out;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  transition: none;
 }
 
 :focus-visible {
@@ -161,7 +166,7 @@ a {
   }
 
   .page-subtitle {
-    @apply text-base;
+    @apply text-sm sm:text-base;
     color: var(--text-secondary);
   }
 
@@ -186,6 +191,10 @@ a {
     @apply rounded-xl shadow-sm transition-all duration-200 border;
     background: var(--surface-primary);
     border-color: var(--border-color);
+  }
+
+  html.light .card-base {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
 
   .card-hover {
@@ -246,7 +255,7 @@ a {
   }
 
   .btn-large {
-    @apply py-4 px-6 rounded-lg shadow-lg hover:shadow-xl min-h-[44px];
+    @apply py-4 px-6 rounded-lg shadow-lg hover:shadow-xl min-h-[44px] font-semibold;
     background-color: var(--brand-primary);
     color: white;
   }
