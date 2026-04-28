@@ -176,7 +176,7 @@ a {
   }
 
   .btn-large {
-    @apply py-4 px-6 rounded-lg shadow-lg hover:shadow-xl;
+    @apply py-4 px-6 rounded-lg shadow-lg hover:shadow-xl min-h-[44px];
     background-color: var(--brand-primary);
     color: white;
   }

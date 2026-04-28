@@ -14,56 +14,105 @@ export function ThemeToggle() {
 
   if (!mounted) return null
 
+  const themeOptions = [
+    {
+      value: 'light' as const,
+      label: 'Claro',
+      icon: Sun,
+      activeStyle: {
+        borderColor: 'var(--brand-primary)',
+        backgroundColor: 'var(--bg-secondary)',
+        color: 'var(--text-primary)',
+      },
+      inactiveStyle: {
+        borderColor: 'var(--border-color)',
+        backgroundColor: 'var(--surface-secondary)',
+        color: 'var(--text-secondary)',
+      },
+    },
+    {
+      value: 'dark' as const,
+      label: 'Oscuro',
+      icon: Moon,
+      activeStyle: {
+        borderColor: 'var(--brand-primary)',
+        backgroundColor: 'var(--surface-primary)',
+        color: 'var(--text-primary)',
+      },
+      inactiveStyle: {
+        borderColor: 'var(--border-color)',
+        backgroundColor: 'var(--surface-secondary)',
+        color: 'var(--text-secondary)',
+      },
+    },
+    {
+      value: 'system' as const,
+      label: 'Sistema',
+      icon: Settings,
+      activeStyle: {
+        borderColor: 'var(--brand-primary)',
+        backgroundColor: 'var(--surface-primary)',
+        color: 'var(--text-primary)',
+      },
+      inactiveStyle: {
+        borderColor: 'var(--border-color)',
+        backgroundColor: 'var(--surface-secondary)',
+        color: 'var(--text-secondary)',
+      },
+    },
+  ]
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <label className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <label style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text-primary)' }}>
           Tema de la aplicación
         </label>
-        <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
           Elige cómo prefieres ver Smart Sense
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        {/* Light mode */}
-        <button
-          onClick={() => setTheme('light')}
-          className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 min-h-[100px] justify-center ${
-            theme === 'light'
-              ? 'border-orange-500 bg-orange-50'
-              : 'border-gray-300 bg-gray-50 hover:border-gray-400'
-          }`}
-        >
-          <Sun className="w-5 h-5" />
-          <span className="text-xs font-semibold">Claro</span>
-        </button>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+        {themeOptions.map((option) => {
+          const Icon = option.icon
+          const isActive = theme === option.value
+          const style = isActive ? option.activeStyle : option.inactiveStyle
 
-        {/* Dark mode */}
-        <button
-          onClick={() => setTheme('dark')}
-          className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 min-h-[100px] justify-center ${
-            theme === 'dark'
-              ? 'border-orange-500 bg-blue-900 text-white'
-              : 'border-gray-700 bg-gray-900 text-gray-200 hover:border-gray-600'
-          }`}
-        >
-          <Moon className="w-5 h-5" />
-          <span className="text-xs font-semibold">Oscuro</span>
-        </button>
-
-        {/* System mode */}
-        <button
-          onClick={() => setTheme('system')}
-          className={`p-4 rounded-lg border-2 transition-all flex flex-col items-center gap-2 min-h-[100px] justify-center ${
-            theme === 'system'
-              ? 'border-orange-500 bg-gradient-to-br from-gray-100 to-gray-900'
-              : 'border-gray-600 bg-gradient-to-br from-gray-200 to-gray-700 hover:border-gray-500'
-          }`}
-        >
-          <Settings className="w-5 h-5" />
-          <span className="text-xs font-semibold">Sistema</span>
-        </button>
+          return (
+            <button
+              key={option.value}
+              onClick={() => setTheme(option.value)}
+              style={{
+                padding: '1rem',
+                borderRadius: '0.5rem',
+                border: '2px solid',
+                minHeight: '100px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.5rem',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 150ms ease-in-out',
+                ...style,
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.opacity = '0.8'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.opacity = '1'
+                }
+              }}
+            >
+              <Icon style={{ width: '1.25rem', height: '1.25rem' }} />
+              <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>{option.label}</span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
