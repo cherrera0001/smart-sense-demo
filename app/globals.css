@@ -197,17 +197,22 @@ a {
   }
 
   .card-header {
-    @apply space-y-1;
+    @apply space-y-2;
   }
 
   .card-title {
-    @apply text-lg font-semibold;
+    @apply text-lg font-semibold tracking-tight;
     color: var(--text-primary);
   }
 
   .card-subtitle {
-    @apply text-xs uppercase tracking-widest;
+    @apply text-xs uppercase tracking-widest font-medium;
     color: var(--text-secondary);
+  }
+
+  /* Card content consistent padding */
+  .card-content {
+    @apply space-y-4;
   }
 
   /* BUTTONS - STANDARDIZED */
@@ -358,6 +363,90 @@ a {
   .alert-card {
     @apply card-base card-hover cursor-pointer w-full text-left p-5 space-y-4;
     background: linear-gradient(135deg, var(--surface-primary), var(--surface-secondary));
+  }
+
+  /* INTERACTIVE STATES - CONSISTENT */
+  .hover-subtle {
+    @apply hover:bg-text-tertiary/8 transition-colors duration-200;
+  }
+
+  .hover-medium {
+    @apply hover:bg-text-tertiary/15 hover:shadow-sm transition-all duration-200;
+  }
+
+  .hover-prominent {
+    @apply hover:bg-text-tertiary/20 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  /* DATA DISPLAY - CONSISTENT FORMATTING */
+  .numeric-value {
+    @apply font-bold tabular tracking-tight;
+    color: var(--text-primary);
+  }
+
+  .percentage-value {
+    @apply numeric-value;
+  }
+
+  .currency-value {
+    @apply numeric-value;
+  }
+
+  .unit-label {
+    @apply text-xs uppercase tracking-widest;
+    color: var(--text-tertiary);
+  }
+
+  /* ICON SIZING SCALE - CONSISTENT */
+  .icon-xs {
+    @apply w-3 h-3;
+  }
+
+  .icon-sm {
+    @apply w-4 h-4;
+  }
+
+  .icon-md {
+    @apply w-5 h-5;
+  }
+
+  .icon-lg {
+    @apply w-6 h-6;
+  }
+
+  .icon-xl {
+    @apply w-8 h-8;
+  }
+
+  /* TYPOGRAPHY STANDARDIZATION */
+  .label-sm {
+    @apply text-xs font-medium uppercase tracking-widest;
+    color: var(--text-secondary);
+  }
+
+  .label-md {
+    @apply text-sm font-semibold;
+    color: var(--text-primary);
+  }
+
+  .label-lg {
+    @apply text-base font-bold;
+    color: var(--text-primary);
+  }
+
+  /* EMPTY STATE - CONSISTENT PATTERN */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .empty-state-icon {
+    @apply w-12 h-12 mb-4 opacity-50;
+    color: var(--text-tertiary);
+  }
+
+  .empty-state-text {
+    @apply text-sm;
+    color: var(--text-secondary);
   }
 
   .alert-card-new {
