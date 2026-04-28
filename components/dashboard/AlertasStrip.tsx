@@ -16,11 +16,7 @@ export function AlertasStrip() {
     if (tipo === 'anomalia') {
       return {
         icon: <AlertTriangle className="w-5 h-5" />,
-        badgeStyle: {
-          backgroundColor: 'var(--severity-warning-bg)',
-          color: 'var(--severity-warning)',
-          borderColor: 'var(--severity-warning-ring)',
-        },
+        badgeVariant: 'warning' as const,
         severityLabel: 'Anomalía detectada',
         accentColor: 'var(--severity-warning)',
       }
@@ -28,22 +24,14 @@ export function AlertasStrip() {
     if (tipo === 'sugerencia') {
       return {
         icon: <Lightbulb className="w-5 h-5" />,
-        badgeStyle: {
-          backgroundColor: 'var(--severity-info-bg)',
-          color: 'var(--severity-info)',
-          borderColor: 'var(--severity-info-ring)',
-        },
+        badgeVariant: 'info' as const,
         severityLabel: 'Sugerencia',
         accentColor: 'var(--severity-info)',
       }
     }
     return {
       icon: <AlertCircle className="w-5 h-5" />,
-      badgeStyle: {
-        backgroundColor: 'var(--severity-critical-bg)',
-        color: 'var(--severity-critical)',
-        borderColor: 'var(--severity-critical-ring)',
-      },
+      badgeVariant: 'critical' as const,
       severityLabel: 'Crítica',
       accentColor: 'var(--severity-critical)',
     }
@@ -78,16 +66,15 @@ export function AlertasStrip() {
               <div
                 key={a.id}
                 onClick={() => setSelectedAlert(a.id)}
-                className="group cursor-pointer text-left border border-text-tertiary/15 rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 hover:border-text-tertiary/30 focus-within:ring-2 focus-within:ring-brand-primary focus-within:ring-offset-2"
-                style={{background: 'linear-gradient(135deg, var(--surface-primary), var(--surface-secondary))'}}
+                className="group alert-card hover:border-text-tertiary/30 focus-within:ring-2 focus-within:ring-brand-primary focus-within:ring-offset-2"
               >
                 <div className="space-y-4">
                   {/* Top Row: Badge + Status */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border" style={{...styles.badgeStyle, borderWidth: '1px'}}>
+                    <Badge variant={styles.badgeVariant} className="gap-2 px-3 py-1.5">
                       <div style={{color: styles.accentColor}}>{styles.icon}</div>
                       <span>{styles.severityLabel}</span>
-                    </div>
+                    </Badge>
                     <div className="flex items-center gap-2">
                       {isNew && <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse" />}
                       <ChevronRight className="w-4 h-4 text-text-tertiary group-hover:translate-x-1 transition-transform" />
@@ -110,7 +97,7 @@ export function AlertasStrip() {
                   {a.ahorroEstimadoClp && (
                     <div className="flex items-baseline gap-3 pt-2 border-t border-text-tertiary/10">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">Ahorro estimado:</span>
+                        <span className="text-caption font-medium">Ahorro estimado:</span>
                         <span className="text-lg font-bold tabular" style={{color: styles.accentColor}}>
                           {formatCLP(a.ahorroEstimadoClp)}
                         </span>
@@ -186,10 +173,7 @@ export function AlertasStrip() {
 
               {/* Savings Highlight */}
               {alert.ahorroEstimadoClp && (
-                <div className="border rounded-xl p-6 space-y-2" style={{
-                  background: `linear-gradient(135deg, var(--brand-primary-gradient-from), var(--brand-primary-gradient-to))`,
-                  borderColor: 'rgba(255, 138, 0, 0.2)'
-                }}>
+                <div className="alert-modal-highlight">
                   <p className="text-xs text-text-tertiary font-bold uppercase tracking-widest">💡 Potencial de ahorro</p>
                   <div className="flex items-baseline gap-2">
                     <p className="text-5xl font-bold text-brand-primary tabular">
@@ -208,14 +192,14 @@ export function AlertasStrip() {
                     handleToggleRead(alert.id)
                     setSelectedAlert(null)
                   }}
-                  className="flex-1 bg-brand-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-brand-primary-dark shadow-md focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 focus-visible:outline-none transition-all duration-200 text-sm hover:shadow-lg active:scale-95"
+                  className="flex-1 btn-primary shadow-md hover:shadow-lg text-sm"
                   type="button"
                 >
                   Marcar como leído
                 </button>
                 <button
                   onClick={() => setSelectedAlert(null)}
-                  className="px-6 py-3 text-text-secondary hover:bg-text-tertiary/10 rounded-lg font-semibold transition-colors duration-200 text-sm"
+                  className="btn-secondary px-6 text-sm"
                   type="button"
                 >
                   Cerrar

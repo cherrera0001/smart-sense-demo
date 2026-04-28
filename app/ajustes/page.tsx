@@ -92,7 +92,7 @@ export default function AjustesPage() {
                       </div>
                     </div>
                     <div className="flex-shrink-0 ml-3">
-                      <Badge variant={badgeVariant as any} className="text-xs font-bold">
+                      <Badge variant={badgeVariant} className="text-xs font-bold">
                         {isOnline ? 'Online' : isReconnecting ? 'Reconectando' : 'Offline'}
                       </Badge>
                     </div>

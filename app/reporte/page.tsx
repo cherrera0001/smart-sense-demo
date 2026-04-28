@@ -34,12 +34,12 @@ function ReportePageContent() {
     const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
 
     setChartColors({
-      gridColor: isDark ? '#3A4555' : '#E5E7EB',
-      axisColor: isDark ? '#8A94A6' : '#6B7280',
-      tooltipBg: isDark ? '#131D2E' : '#FFFFFF',
-      tooltipBorder: isDark ? '#1A2437' : '#F3F4F6',
+      gridColor: styles.getPropertyValue('--chart-grid-color').trim() || (isDark ? '#3A4555' : '#E5E7EB'),
+      axisColor: styles.getPropertyValue('--chart-axis-color').trim() || (isDark ? '#8A94A6' : '#6B7280'),
+      tooltipBg: styles.getPropertyValue('--chart-tooltip-bg').trim() || (isDark ? '#131D2E' : '#FFFFFF'),
+      tooltipBorder: styles.getPropertyValue('--chart-tooltip-border').trim() || (isDark ? '#1A2437' : '#F3F4F6'),
       barColor: styles.getPropertyValue('--brand-primary').trim() || '#FF8A00',
-      textColor: isDark ? '#F8F9FB' : '#0F172A'
+      textColor: styles.getPropertyValue('--text-primary').trim() || (isDark ? '#F8F9FB' : '#0F172A')
     })
   }, [theme, mounted])
 
@@ -55,10 +55,7 @@ function ReportePageContent() {
         {/* Content Section */}
         <div className="page-section">
           {/* Ahorro Card */}
-          <div className="border rounded-lg p-6 space-y-3" style={{
-            background: `linear-gradient(135deg, var(--brand-primary-gradient-from), var(--brand-primary-gradient-to))`,
-            borderColor: 'rgba(255, 138, 0, 0.2)'
-          }}>
+          <div className="alert-modal-highlight">
             <div className="flex items-center gap-2">
               <TrendingDown className="w-5 h-5 text-brand-primary" />
               <h2 className="card-subtitle">Ahorro esta semana</h2>
@@ -93,7 +90,7 @@ function ReportePageContent() {
             <div className="card-header">
               <h2 className="card-title">Comparativa semanal</h2>
             </div>
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={280} minHeight={250}>
               <BarChart data={reporteSemanal.comparativa} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="0" stroke={chartColors.gridColor} vertical={false} />
                 <XAxis dataKey="semana" stroke={chartColors.axisColor} style={{ fontSize: '12px', fontWeight: '500' }} />

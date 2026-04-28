@@ -31,7 +31,7 @@ export default function DesglosePage() {
               <button
                 key={p}
                 onClick={() => setPeriodo(p)}
-                className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none ${
+                className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none min-h-[44px] ${
                   periodo === p
                     ? 'bg-brand-primary text-white shadow-md focus-visible:ring-brand-primary'
                     : 'bg-surface-secondary text-text-secondary border border-text-tertiary/20 hover:bg-surface-secondary/80 hover:border-text-tertiary/40 focus-visible:ring-text-secondary'
@@ -58,7 +58,7 @@ export default function DesglosePage() {
                   labelLine={false}
                   label={({ value }) => `${value}%`}
                   outerRadius={90}
-                  fill="#8884d8"
+                  fill="var(--brand-primary)"
                   dataKey="value"
                   isAnimationActive={false}
                 >
@@ -68,10 +68,11 @@ export default function DesglosePage() {
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#131D2E',
-                    border: '1px solid #1A2437',
+                    backgroundColor: 'var(--chart-tooltip-bg)',
+                    border: '1px solid var(--chart-tooltip-border)',
                     borderRadius: '10px',
-                    padding: '8px 12px'
+                    padding: '8px 12px',
+                    color: 'var(--text-primary)',
                   }}
                   formatter={(value: any) => `${value}%`}
                 />

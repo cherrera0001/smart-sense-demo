@@ -29,10 +29,10 @@ export function HeroNumerico() {
       {/* Header */}
       <div className="flex items-baseline justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary tracking-tight">Consumo de hoy</h1>
-          <p className="text-sm text-text-secondary">{formatKwh(consumoHoy.kwh)} kWh</p>
+          <h1 className="text-h2">Consumo de hoy</h1>
+          <p className="text-body">{formatKwh(consumoHoy.kwh)} kWh</p>
         </div>
-        <Badge variant="secondary" className="text-xs flex-shrink-0">Demo</Badge>
+        <Badge variant="outline" className="text-xs flex-shrink-0">Demo</Badge>
       </div>
 
       {/* Main metric card - Premium design */}
@@ -91,7 +91,7 @@ export function HeroNumerico() {
       </div>
 
       {/* CTA - Premium Brand Primary Action */}
-      <Link href="/desglose" className="w-full group relative inline-flex bg-brand-primary text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl hover:bg-brand-primary-dark focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand-primary focus-visible:outline-none transition-all duration-200 active:scale-95 overflow-hidden">
+      <Link href="/desglose" className="w-full group relative inline-flex btn-large overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/15 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <div className="relative flex items-center justify-center gap-2 w-full">
           <BarChart3 className="w-5 h-5" />

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { LayoutShell } from '@/components/layout/LayoutShell'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogClose } from '@/components/ui/dialog'
 import { alertas as mockAlertas } from '@/lib/mock-data'
 import { formatCLP } from '@/lib/format'
@@ -15,11 +16,7 @@ export default function AlertasPage() {
     if (tipo === 'anomalia') {
       return {
         icon: <AlertTriangle className="w-5 h-5" />,
-        badgeStyle: {
-          backgroundColor: 'var(--severity-warning-bg)',
-          color: 'var(--severity-warning)',
-          borderColor: 'var(--severity-warning-ring)',
-        },
+        badgeVariant: 'warning' as const,
         severityLabel: 'Anomalía',
         accentColor: 'var(--severity-warning)',
         iconColor: 'text-severity-warning',
@@ -28,11 +25,7 @@ export default function AlertasPage() {
     if (tipo === 'sugerencia') {
       return {
         icon: <Lightbulb className="w-5 h-5" />,
-        badgeStyle: {
-          backgroundColor: 'var(--severity-info-bg)',
-          color: 'var(--severity-info)',
-          borderColor: 'var(--severity-info-ring)',
-        },
+        badgeVariant: 'info' as const,
         severityLabel: 'Sugerencia',
         accentColor: 'var(--severity-info)',
         iconColor: 'text-severity-info',
@@ -40,11 +33,7 @@ export default function AlertasPage() {
     }
     return {
       icon: <AlertCircle className="w-5 h-5" />,
-      badgeStyle: {
-        backgroundColor: 'var(--severity-critical-bg)',
-        color: 'var(--severity-critical)',
-        borderColor: 'var(--severity-critical-ring)',
-      },
+      badgeVariant: 'critical' as const,
       severityLabel: 'Crítica',
       accentColor: 'var(--severity-critical)',
       iconColor: 'text-severity-critical',
@@ -86,19 +75,19 @@ export default function AlertasPage() {
                 <div
                   key={alerta.id}
                   onClick={() => setSelectedId(alerta.id)}
-                  className={`cursor-pointer w-full text-left bg-gradient-to-br from-surface-primary to-surface-secondary border border-text-tertiary/15 rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 ${
+                  className={`alert-card ${
                     isNew
-                      ? 'hover:border-text-tertiary/30 ring-1 ring-brand-primary/20'
-                      : 'hover:border-text-tertiary/30 opacity-75'
+                      ? 'alert-card-new hover:border-text-tertiary/30'
+                      : 'hover:border-text-tertiary/30 opacity-80'
                   } focus-within:ring-2 focus-within:ring-brand-primary focus-within:ring-offset-2`}
                 >
                   <div className="space-y-4">
                     {/* Top Row: Badge + Status */}
                     <div className="flex items-start justify-between gap-3">
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border" style={{...styles.badgeStyle, borderWidth: '1px'}}>
+                      <Badge variant={styles.badgeVariant} className="gap-2 px-3 py-1.5">
                         <div style={{color: styles.accentColor}}>{styles.icon}</div>
                         <span>{styles.severityLabel}</span>
-                      </div>
+                      </Badge>
                       <div className="flex items-center gap-2">
                         {isNew && <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse" />}
                         {alerta.leida && <Eye className="w-4 h-4 text-text-tertiary" />}
@@ -121,7 +110,7 @@ export default function AlertasPage() {
                     {alerta.ahorroEstimadoClp && (
                       <div className="flex items-baseline gap-3 pt-2 border-t border-text-tertiary/10">
                         <div className="flex items-baseline gap-1">
-                          <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">Ahorro:</span>
+                        <span className="text-caption font-medium">Ahorro estimado:</span>
                           <span className="text-lg font-bold tabular" style={{color: styles.accentColor}}>
                             {formatCLP(alerta.ahorroEstimadoClp)}
                           </span>
@@ -176,7 +165,7 @@ export default function AlertasPage() {
 
               {/* Savings Highlight */}
               {selected.ahorroEstimadoClp && (
-                <div className="bg-gradient-to-br from-brand-primary/8 to-brand-primary/4 border border-brand-primary/20 rounded-xl p-6 space-y-2">
+                <div className="alert-modal-highlight">
                   <p className="text-xs text-text-tertiary font-bold uppercase tracking-widest">💡 Potencial de ahorro</p>
                   <div className="flex items-baseline gap-2">
                     <p className="text-5xl font-bold text-brand-primary tabular">
@@ -193,7 +182,7 @@ export default function AlertasPage() {
                 {!selected.leida && (
                   <button
                     onClick={() => handleAcknowledge(selected.id)}
-                    className="flex-1 bg-brand-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-brand-primary-dark shadow-md focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 focus-visible:outline-none transition-all duration-200 text-sm hover:shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                    className="flex-1 btn-primary shadow-md hover:shadow-lg text-sm flex items-center justify-center gap-2"
                   >
                     <Check className="w-4 h-4" />
                     Marcar como leído
@@ -201,7 +190,7 @@ export default function AlertasPage() {
                 )}
                 <button
                   onClick={() => setSelectedId(null)}
-                  className="px-6 py-3 text-text-secondary hover:bg-text-tertiary/10 rounded-lg font-semibold transition-colors duration-200 text-sm"
+                  className="btn-secondary px-6 text-sm"
                 >
                   Cerrar
                 </button>

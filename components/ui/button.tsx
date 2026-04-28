@@ -3,14 +3,14 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-energy focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 min-h-[44px]',
   {
     variants: {
       variant: {
-        default: 'bg-energy text-ink hover:bg-energy-dk focus-visible:ring-ink',
-        outline: 'border border-text-dim bg-white text-ink hover:bg-bg-light',
-        ghost: 'text-ink hover:bg-bg-light',
-        secondary: 'bg-electric text-white hover:opacity-90',
+        default: 'bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-dark)] focus-visible:ring-[var(--brand-primary)]',
+        outline: 'border border-[var(--border-color)] bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] focus-visible:ring-[var(--brand-primary)]',
+        ghost: 'text-[var(--text-primary)] hover:bg-[var(--surface-secondary)] focus-visible:ring-[var(--brand-primary)]',
+        secondary: 'bg-[var(--surface-secondary)] text-[var(--text-primary)] border border-[var(--border-color)] hover:opacity-90 focus-visible:ring-[var(--brand-primary)]',
       },
       size: {
         sm: 'px-3 py-1.5 text-xs',

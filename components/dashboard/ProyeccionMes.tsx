@@ -25,16 +25,17 @@ export function ProyeccionMes() {
   useEffect(() => {
     if (!mounted) return
 
-    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    const root = document.documentElement
+    const styles = getComputedStyle(root)
 
     setChartColors({
-      gridColor: isDark ? '#3A4555' : '#E5E7EB',
-      axisColor: isDark ? '#8A94A6' : '#6B7280',
-      tooltipBg: isDark ? '#131D2E' : '#FFFFFF',
-      tooltipBorder: isDark ? '#1A2437' : '#F3F4F6',
-      areaColor: '#FF8A00',
-      areaColor2: '#FBBF24',
-      textColor: isDark ? '#F8F9FB' : '#0F172A'
+      gridColor: styles.getPropertyValue('--chart-grid-color').trim() || '#3A4555',
+      axisColor: styles.getPropertyValue('--chart-axis-color').trim() || '#8A94A6',
+      tooltipBg: styles.getPropertyValue('--chart-tooltip-bg').trim() || '#131D2E',
+      tooltipBorder: styles.getPropertyValue('--chart-tooltip-border').trim() || '#1A2437',
+      areaColor: styles.getPropertyValue('--brand-primary').trim() || '#FF8A00',
+      areaColor2: styles.getPropertyValue('--warning').trim() || '#FBBF24',
+      textColor: styles.getPropertyValue('--text-primary').trim() || '#F8F9FB',
     })
   }, [theme, mounted])
   return (
@@ -45,18 +46,18 @@ export function ProyeccionMes() {
           <p className="text-sm text-text-secondary">Histórico y proyección del mes</p>
         </div>
 
-        <ResponsiveContainer width="100%" height={360}>
+        <ResponsiveContainer width="100%" height={300} minHeight={250}>
           <AreaChart data={consumoHoy.serieMesAcumulada} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
             <defs>
               <linearGradient id="colorCLP" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#FF8A00" stopOpacity={0.4} />
-                <stop offset="70%" stopColor="#FF8A00" stopOpacity={0.1} />
-                <stop offset="100%" stopColor="#FF8A00" stopOpacity={0} />
+                <stop offset="0%" stopColor={chartColors.areaColor} stopOpacity={0.4} />
+                <stop offset="70%" stopColor={chartColors.areaColor} stopOpacity={0.1} />
+                <stop offset="100%" stopColor={chartColors.areaColor} stopOpacity={0} />
               </linearGradient>
               <linearGradient id="colorProjection" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#FBBF24" stopOpacity={0.3} />
-                <stop offset="70%" stopColor="#FBBF24" stopOpacity={0.05} />
-                <stop offset="100%" stopColor="#FBBF24" stopOpacity={0} />
+                <stop offset="0%" stopColor={chartColors.areaColor2} stopOpacity={0.3} />
+                <stop offset="70%" stopColor={chartColors.areaColor2} stopOpacity={0.05} />
+                <stop offset="100%" stopColor={chartColors.areaColor2} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="0" stroke={chartColors.gridColor} vertical={false} />

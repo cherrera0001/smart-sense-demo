@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { cn } from '@/lib/utils'
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -6,7 +7,8 @@ const Card = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={`rounded-lg border border-text-dim bg-ink-3 p-6 ${className}`}
+    className={cn('rounded-xl border p-6 shadow-sm transition-colors duration-300', className)}
+    style={{ borderColor: 'var(--border-color)', background: 'var(--surface-primary)' }}
     {...props}
   />
 ))
@@ -16,7 +18,7 @@ const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={`mb-4 ${className}`} {...props} />
+  <div ref={ref} className={cn('mb-4 space-y-1', className)} {...props} />
 ))
 CardHeader.displayName = 'CardHeader'
 
@@ -26,7 +28,8 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={`text-lg font-semibold text-text-on-dark ${className}`}
+    className={cn('text-lg font-semibold', className)}
+    style={{ color: 'var(--text-primary)' }}
     {...props}
   />
 ))

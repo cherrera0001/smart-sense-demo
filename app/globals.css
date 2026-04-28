@@ -35,19 +35,19 @@ html.dark {
   --error: #EF4444;
   --info: #60A5FA;
 
-  /* Severity colors - dark */
-  --severity-critical: #F87171;
-  --severity-critical-bg: rgba(248, 113, 113, 0.15);
-  --severity-critical-ring: rgba(248, 113, 113, 0.30);
-  --severity-warning: #FBBF24;
-  --severity-warning-bg: rgba(251, 191, 36, 0.15);
-  --severity-warning-ring: rgba(251, 191, 36, 0.30);
-  --severity-info: #60A5FA;
-  --severity-info-bg: rgba(96, 165, 250, 0.15);
-  --severity-info-ring: rgba(96, 165, 250, 0.30);
-  --severity-success: #10B981;
-  --severity-success-bg: rgba(16, 185, 129, 0.15);
-  --severity-success-ring: rgba(16, 185, 129, 0.30);
+  /* Severity colors - dark (WCAG AA 4.5:1 contrast with #131D2E bg) */
+  --severity-critical: #FF6B6B;
+  --severity-critical-bg: rgba(255, 107, 107, 0.12);
+  --severity-critical-ring: rgba(255, 107, 107, 0.25);
+  --severity-warning: #FFD43B;
+  --severity-warning-bg: rgba(255, 212, 59, 0.12);
+  --severity-warning-ring: rgba(255, 212, 59, 0.25);
+  --severity-info: #74C0FC;
+  --severity-info-bg: rgba(116, 192, 252, 0.12);
+  --severity-info-ring: rgba(116, 192, 252, 0.25);
+  --severity-success: #51CF66;
+  --severity-success-bg: rgba(81, 207, 102, 0.12);
+  --severity-success-ring: rgba(81, 207, 102, 0.25);
 
   /* Gradient variants - dark */
   --severity-critical-gradient-from: rgba(248, 113, 113, 0.20);
@@ -282,7 +282,7 @@ a {
     color: var(--text-primary);
   }
 
-  /* SPACING & LAYOUT */
+  /* SPACING & LAYOUT - STANDARDIZED SCALE */
   .section-gap {
     @apply space-y-6;
   }
@@ -295,6 +295,40 @@ a {
     @apply grid grid-cols-1 gap-4;
   }
 
+  /* Standard spacing utilities */
+  .space-xs {
+    @apply gap-2 space-y-2;
+  }
+
+  .space-sm {
+    @apply gap-3 space-y-3;
+  }
+
+  .space-md {
+    @apply gap-4 space-y-4;
+  }
+
+  .space-lg {
+    @apply gap-6 space-y-6;
+  }
+
+  /* Card sizing constraints for consistency */
+  .data-container {
+    @apply w-full min-h-0 overflow-hidden;
+  }
+
+  /* Alert/Severity badge base */
+  .alert-card {
+    @apply border border-text-tertiary/15 rounded-lg p-5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer bg-gradient-to-br from-surface-primary to-surface-secondary;
+  }
+
+  /* Modal highlight (used in reporte, alertas) */
+  .alert-modal-highlight {
+    @apply border rounded-lg p-6 space-y-3;
+    background: linear-gradient(135deg, var(--brand-primary-gradient-from), var(--brand-primary-gradient-to));
+    border-color: rgba(255, 138, 0, 0.2);
+  }
+
   /* BADGE & SEVERITY */
   .badge-base {
     @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border;
@@ -302,22 +336,37 @@ a {
 
   .badge-warning {
     @apply badge-base;
-    background-color: rgba(217, 119, 6, 0.15);
-    color: var(--warning);
-    border-color: rgba(217, 119, 6, 0.3);
+    background-color: var(--severity-warning-bg);
+    color: var(--severity-warning);
+    border-color: var(--severity-warning-ring);
   }
 
   .badge-info {
     @apply badge-base;
-    background-color: rgba(59, 130, 246, 0.15);
-    color: var(--info);
-    border-color: rgba(59, 130, 246, 0.3);
+    background-color: var(--severity-info-bg);
+    color: var(--severity-info);
+    border-color: var(--severity-info-ring);
   }
 
   .badge-critical {
     @apply badge-base;
-    background-color: rgba(220, 38, 38, 0.15);
-    color: var(--error);
-    border-color: rgba(220, 38, 38, 0.3);
+    background-color: var(--severity-critical-bg);
+    color: var(--severity-critical);
+    border-color: var(--severity-critical-ring);
+  }
+
+  .alert-card {
+    @apply card-base card-hover cursor-pointer w-full text-left p-5 space-y-4;
+    background: linear-gradient(135deg, var(--surface-primary), var(--surface-secondary));
+  }
+
+  .alert-card-new {
+    @apply ring-1 ring-brand-primary/20;
+  }
+
+  .alert-modal-highlight {
+    @apply border rounded-xl p-6 space-y-2;
+    background: linear-gradient(135deg, var(--brand-primary-gradient-from), var(--brand-primary-gradient-to));
+    border-color: rgba(255, 138, 0, 0.2);
   }
 }
