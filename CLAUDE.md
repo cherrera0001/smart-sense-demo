@@ -39,33 +39,37 @@
 - **MEDIUM:** 8/15 (53%) 🔄
 - **LOW:** 0/8 (0%) ⏳
 
-## 🔧 CLI Setup (Apr 28)
+## 🔧 CLI Setup (Apr 28) ✅ COMPLETADO
 
-### GitHub CLI
-**Tokens en `.env.local` (NUNCA comitear):**
+### GitHub CLI ✅
+**Token en `.env.local`:**
 ```
-GITHUB_TOKEN=ghp_xxxx...  # Crear en https://github.com/settings/tokens
+GITHUB_TOKEN=ghp_...
 ```
-- ✅ Repo created & pushed
+- ✅ Authenticado con `gh auth login --with-token`
+- ✅ Repo created & pushed a cherrera0001/smart-sense-demo
 - ⚠️ Token stored locally (`.env.local` in `.gitignore`)
 
-### Vercel CLI (TODO)
-**Crear en https://vercel.com/account/tokens:**
+### Vercel CLI ✅
+**Token en `.env.local`:**
 ```
-VERCEL_TOKEN=vercel_...
+VERCEL_TOKEN=vcp_...
 ```
-- Scope: `smartsense-cli`
+- ✅ Autenticado con `npx vercel whoami`
+- ✅ Project ID: `prj_pgEpK6iqMMcvAYen38xR0Nb9QjgF`
+- ✅ Auto-deploy on master push habilitado
+- Scope: Full account access
 - Expiration: 90 days
-- **Guardar en `.env.local` cuando esté listo**
 
-### Cloudflare CLI (TODO)
-**Crear en https://dash.cloudflare.com/profile/api-tokens:**
+### Cloudflare CLI ✅
+**Token en `.env.local`:**
 ```
-CLOUDFLARE_API_TOKEN=czd_...
+CLOUDFLARE_API_TOKEN=cfut_...
 ```
-- Template: “Edit Cloudflare Workers”
-- Permissions: Account Workers Scripts + Routes, Zone Read
-- **Guardar en `.env.local` cuando esté listo**
+- ✅ Autenticado con `npx wrangler whoami`
+- ✅ Permissions: Workers Scripts Edit, Routes Edit, Zone Read
+- Zone Resources: All zones
+- API Token (no OAuth)
 
 ## 📦 Comandos del Proyecto
 

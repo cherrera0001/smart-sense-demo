@@ -111,14 +111,19 @@ Abre `http://localhost:3000`, luego:
 - **Auto-deploy:** Master branch triggers production build
 - **Domain:** https://smartsense.c4a.cl
 
-### CLI Tokens (`.env.local`)
+### CLI Tokens (`.env.local`) ✅ CONFIGURADO
 ```
-GITHUB_TOKEN=ghp_...        # GitHub Personal Access Token
-VERCEL_TOKEN=vercel_...     # Vercel CLI Token (crear en https://vercel.com/account/tokens)
-CLOUDFLARE_API_TOKEN=czd_... # Cloudflare API Token (crear en https://dash.cloudflare.com/profile/api-tokens)
+GITHUB_TOKEN=ghp_...              # GitHub Personal Access Token ✅
+VERCEL_TOKEN=vcp_...              # Vercel CLI Token ✅
+CLOUDFLARE_API_TOKEN=cfut_...     # Cloudflare API Token ✅
 ```
 
 **⚠️ IMPORTANTE:** `.env.local` está en `.gitignore` — nunca comitear tokens.
+
+### Autenticación CLI Status
+- ✅ **GitHub:** autenticado con `gh auth login`
+- ✅ **Vercel:** autenticado con `VERCEL_TOKEN`
+- ✅ **Cloudflare:** autenticado con `CLOUDFLARE_API_TOKEN` (wrangler)
 
 ## Cambios Recientes (Apr 28, 2026)
 
