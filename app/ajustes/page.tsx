@@ -67,7 +67,7 @@ export default function AjustesPage() {
                 const bgColor = isOnline ? 'bg-success/10' : isReconnecting ? 'bg-warning/10' : 'bg-error/10'
                 const borderColor = isOnline ? 'border-success/40' : isReconnecting ? 'border-warning/40' : 'border-error/40'
                 const iconColor = isOnline ? 'text-success' : isReconnecting ? 'text-warning animate-spin' : 'text-error'
-                const badgeVariant = isOnline ? 'success' : isReconnecting ? 'warning' : 'error'
+                const badgeVariant = isOnline ? 'success' : isReconnecting ? 'warning' : 'critical'
 
                 return (
                   <div

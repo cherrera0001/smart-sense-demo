@@ -143,10 +143,10 @@ export default function AlertasPage() {
                       <div style={{color: styles.accentColor}}>{styles.icon}</div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3 border" style={{...styles.badgeStyle, borderWidth: '1px'}}>
+                      <Badge variant={styles.badgeVariant} className="mb-3 gap-2">
                         <span>{styles.severityLabel}</span>
                         {!selected.leida && <div className="w-1.5 h-1.5 bg-current rounded-full" />}
-                      </div>
+                      </Badge>
                       <h2 className="text-2xl font-bold text-text-primary tracking-tight">
                         {selected.titulo}
                       </h2>
