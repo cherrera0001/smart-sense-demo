@@ -14,13 +14,52 @@ html {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color-scheme: light dark;
+}
+
+/* Dark theme (default) */
+html,
+html.dark {
+  --bg-primary: #0A0F1B;
+  --bg-secondary: #0D1525;
+  --surface-primary: #131D2E;
+  --surface-secondary: #1A2437;
+  --text-primary: #F8F9FB;
+  --text-secondary: #B0BAC6;
+  --text-tertiary: #8A94A6;
+  --border-color: #2A3447;
+  --brand-primary: #FF8A00;
+  --brand-primary-dark: #E67E00;
+  --success: #10B981;
+  --warning: #FBBF24;
+  --error: #EF4444;
+  --info: #3B82F6;
+}
+
+/* Light theme */
+html.light {
+  --bg-primary: #F8F9FB;
+  --bg-secondary: #F3F4F6;
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F3F4F6;
+  --text-primary: #0A0F1B;
+  --text-secondary: #4B5563;
+  --text-tertiary: #6B7280;
+  --border-color: #E5E7EB;
+  --brand-primary: #FF8A00;
+  --brand-primary-dark: #E67E00;
+  --success: #059669;
+  --warning: #D97706;
+  --error: #DC2626;
+  --info: #0052CC;
 }
 
 body {
-  background: radial-gradient(ellipse at top, #111827 0%, #0A0F1B 60%);
-  color: #F1F5F9;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-size: 15px;
   line-height: 1.6;
+  transition: background-color 300ms ease, color 300ms ease;
 }
 
 /* Hero numeric styles */
@@ -47,15 +86,18 @@ a {
 @layer components {
   /* PAGE STRUCTURE - STANDARDIZED */
   .page-header {
-    @apply px-4 py-5 sm:px-6 sm:py-6 space-y-3 border-b border-text-tertiary/15;
+    @apply px-4 py-5 sm:px-6 sm:py-6 space-y-3 border-b;
+    border-color: var(--border-color);
   }
 
   .page-title {
-    @apply text-2xl sm:text-3xl font-bold tracking-tight text-text-primary;
+    @apply text-2xl sm:text-3xl font-bold tracking-tight;
+    color: var(--text-primary);
   }
 
   .page-subtitle {
-    @apply text-sm text-text-secondary;
+    @apply text-sm;
+    color: var(--text-secondary);
   }
 
   .page-section {
@@ -76,11 +118,13 @@ a {
 
   /* CARDS & SURFACES - STANDARDIZED */
   .card-base {
-    @apply bg-gradient-to-br from-surface-primary to-surface-secondary border border-text-tertiary/15 rounded-xl shadow-sm transition-all duration-200;
+    @apply rounded-xl shadow-sm transition-all duration-200 border;
+    background: var(--surface-primary);
+    border-color: var(--border-color);
   }
 
   .card-hover {
-    @apply hover:shadow-md hover:border-text-tertiary/30;
+    @apply hover:shadow-md;
   }
 
   .card-premium {
@@ -92,61 +136,85 @@ a {
   }
 
   .card-title {
-    @apply text-lg font-semibold text-text-primary;
+    @apply text-lg font-semibold;
+    color: var(--text-primary);
   }
 
   .card-subtitle {
-    @apply text-xs text-text-secondary uppercase tracking-widest;
+    @apply text-xs uppercase tracking-widest;
+    color: var(--text-secondary);
   }
 
   /* BUTTONS - STANDARDIZED */
   .btn-base {
-    @apply font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none;
+    @apply font-semibold transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none min-h-[44px];
   }
 
   .btn-primary {
-    @apply btn-base bg-brand-primary text-white hover:bg-brand-primary-dark active:scale-95 focus-visible:ring-brand-primary;
+    @apply btn-base px-6 rounded-lg text-white active:scale-95;
+    background-color: var(--brand-primary);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--brand-primary-dark);
   }
 
   .btn-secondary {
-    @apply btn-base px-4 py-2 text-text-secondary hover:bg-text-tertiary/10 rounded-lg focus-visible:ring-text-secondary;
+    @apply btn-base px-4 py-3 rounded-lg border;
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    background-color: var(--surface-secondary);
+  }
+
+  .btn-secondary:hover {
+    opacity: 0.8;
   }
 
   .btn-ghost {
-    @apply btn-base text-brand-primary hover:underline;
+    @apply btn-base hover:underline;
+    color: var(--brand-primary);
   }
 
   .btn-large {
-    @apply py-4 px-6 rounded-lg shadow-lg hover:shadow-xl min-h-[44px];
+    @apply py-4 px-6 rounded-lg shadow-lg hover:shadow-xl;
+    background-color: var(--brand-primary);
+    color: white;
   }
 
   .btn-small {
     @apply py-2 px-3 text-xs rounded-md;
+    color: var(--text-secondary);
   }
 
   /* TEXT HIERARCHY - STANDARDIZED */
   .text-h1 {
-    @apply text-3xl font-bold tracking-tight text-text-primary;
+    @apply text-3xl font-bold tracking-tight;
+    color: var(--text-primary);
   }
 
   .text-h2 {
-    @apply text-2xl font-bold tracking-tight text-text-primary;
+    @apply text-2xl font-bold tracking-tight;
+    color: var(--text-primary);
   }
 
   .text-h3 {
-    @apply text-lg font-semibold text-text-primary;
+    @apply text-lg font-semibold;
+    color: var(--text-primary);
   }
 
   .text-body {
-    @apply text-sm text-text-secondary leading-relaxed;
+    @apply text-sm leading-relaxed;
+    color: var(--text-secondary);
   }
 
   .text-caption {
-    @apply text-xs text-text-tertiary uppercase tracking-widest;
+    @apply text-xs uppercase tracking-widest;
+    color: var(--text-tertiary);
   }
 
   .text-metric {
-    @apply font-bold tabular text-text-primary;
+    @apply font-bold tabular;
+    color: var(--text-primary);
   }
 
   /* SPACING & LAYOUT */
@@ -164,18 +232,27 @@ a {
 
   /* BADGE & SEVERITY */
   .badge-base {
-    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold;
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border;
   }
 
   .badge-warning {
-    @apply badge-base bg-severity-warning/15 text-severity-warning border border-severity-warning/30;
+    @apply badge-base;
+    background-color: rgba(217, 119, 6, 0.15);
+    color: var(--warning);
+    border-color: rgba(217, 119, 6, 0.3);
   }
 
   .badge-info {
-    @apply badge-base bg-severity-info/15 text-severity-info border border-severity-info/30;
+    @apply badge-base;
+    background-color: rgba(59, 130, 246, 0.15);
+    color: var(--info);
+    border-color: rgba(59, 130, 246, 0.3);
   }
 
   .badge-critical {
-    @apply badge-base bg-severity-critical/15 text-severity-critical border border-severity-critical/30;
+    @apply badge-base;
+    background-color: rgba(220, 38, 38, 0.15);
+    color: var(--error);
+    border-color: rgba(220, 38, 38, 0.3);
   }
 }

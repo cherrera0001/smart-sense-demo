@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { ThemeProvider } from '@/lib/context/ThemeContext'
 
 export const metadata: Metadata = {
   title: 'Smart Sense · Demo',
@@ -21,8 +22,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
-      <body className="bg-ink">{children}</body>
+    <html lang="es" suppressHydrationWarning>
+      <body className="bg-surface-primary text-text-primary transition-colors duration-300">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   )
 }

@@ -2,6 +2,7 @@
 
 import { LayoutShell } from '@/components/layout/LayoutShell'
 import { Badge } from '@/components/ui/badge'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { enchufes as mockEnchufes, tarifa } from '@/lib/mock-data'
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react'
 
@@ -17,6 +18,11 @@ export default function AjustesPage() {
 
         {/* Content Section */}
         <div className="page-section">
+          {/* Tema */}
+          <div className="card-premium">
+            <ThemeToggle />
+          </div>
+
           {/* Tarifa */}
           <div className="card-premium">
             <div className="card-header">
