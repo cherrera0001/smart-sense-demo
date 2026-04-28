@@ -2,9 +2,17 @@
 
 import { useTheme } from '@/lib/context/ThemeContext'
 import { Sun, Moon, Settings } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
 
   return (
     <div className="space-y-4">
