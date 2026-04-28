@@ -4,6 +4,9 @@
 
 Consume eléctrico en CLP en tiempo real, onboarding con pairing de enchufes, desglose por firma eléctrica, alertas predictivas y reporte semanal.
 
+> 📚 **[Documentación Completa →](./docs/)** Guías, reportes, criterios de aceptación y más.  
+> 📋 **[Índice Maestro](./docs/_INDEX.md)** — TOC con metadata de todos los documentos.
+
 ### 🚀 Deploy en Vivo
 - **URL:** https://smartsense.c4a.cl
 - **GitHub:** https://github.com/cherrera0001/smart-sense-demo
