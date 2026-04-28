@@ -1,8 +1,24 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "comment": "Prioriza PowerShell para que Node/npm/pnpm del PATH de Windows se vean igual que en el IDE.",
+  "comment": "Prioriza PowerShell para que Node/npm/pnpm del PATH de Windows se vean igual que en el IDE. Hooks para automatización documental.",
   "defaultShell": "powershell",
   "env": {
     "CLAUDE_CODE_USE_POWERSHELL_TOOL": "1"
+  },
+  "hooks": {
+    "on-file-created": {
+      "patterns": ["docs/**/*.md", "*.md"],
+      "exclude": ["node_modules/**", ".next/**", ".git/**"],
+      "command": "/document-curator --auto --file={filePath}",
+      "runInBackground": true,
+      "notify": true
+    },
+    "on-file-modified": {
+      "patterns": ["docs/**/*.md"],
+      "exclude": ["node_modules/**", ".next/**"],
+      "command": "node scripts/mcp-file-indexer.js validate-links {filePath}",
+      "runInBackground": true,
+      "notify": false
+    }
   }
 }
