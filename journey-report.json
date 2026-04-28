@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-04-28T13:18:51.067Z",
+  "journey": "Dashboard → Desglose → Alertas (modal) → Dashboard",
+  "viewport": "380x800 (mobile)",
+  "server": "http://localhost:3000",
+  "measurements": [
+    {
+      "step": "Dashboard load",
+      "ms": 667,
+      "url": "/dashboard"
+    },
+    {
+      "step": "Navigate to Desglose",
+      "ms": 653,
+      "url": "/desglose"
+    },
+    {
+      "step": "Navigate to Alertas",
+      "ms": 641,
+      "url": "/alertas"
+    },
+    {
+      "step": "Modal open",
+      "ms": 0,
+      "warning": "No alert cards"
+    },
+    {
+      "step": "Return to Dashboard",
+      "ms": 654,
+      "url": "/dashboard"
+    }
+  ],
+  "totalMs": 2636,
+  "totalSeconds": "2.64",
+  "slaTarget": 90000,
+  "slaPass": true
+}

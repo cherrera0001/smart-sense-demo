@@ -1,0 +1,28 @@
+═══════════════════════════════════════════════════════════════
+  PRÓXIMOS PASOS - SMARTSENSE.C4A.CL
+═══════════════════════════════════════════════════════════════
+
+⏳ ESPERANDO: Confirmación de que completaste PASOS 1 y 2
+
+PASO 1: Desactivar Deployment Protection
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ejecuta en terminal:
+  npx vercel env rm DEPLOYMENT_PROTECTION_TOKEN --prod --yes
+
+PASO 2: Agregar Dominio smartsense.c4a.cl
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ejecuta en terminal:
+  npx vercel domains add smartsense.c4a.cl --yes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CUANDO TERMINES ARRIBA, RESPONDE:
+✅ HECHO - ambos comandos exitosos
+o
+❌ ERROR - describe qué pasó
+
+Entonces yo:
+1. Validaré que el dominio esté en Vercel
+2. Te diré exactamente qué agregar en Cloudflare
+3. Validaré que las 5 rutas respondan 200
+
+═══════════════════════════════════════════════════════════════

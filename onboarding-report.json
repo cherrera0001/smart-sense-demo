@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-04-28T03:19:08.063Z",
+  "journey": "Onboarding /onboarding → /dashboard",
+  "viewport": "380x800 (mobile)",
+  "server": "http://localhost:3000",
+  "measurements": [
+    {
+      "step": "Onboarding load",
+      "ms": 2706
+    },
+    {
+      "step": "Navigate through steps",
+      "ms": 24,
+      "clickCount": 0
+    },
+    {
+      "step": "End verification",
+      "ms": 0,
+      "url": "http://localhost:3000/onboarding",
+      "endState": "Onboarding"
+    }
+  ],
+  "totalMs": 2730,
+  "totalSeconds": "2.73",
+  "slaTarget": 30000,
+  "slaPass": true,
+  "endState": "Onboarding"
+}

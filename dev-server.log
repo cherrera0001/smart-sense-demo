@@ -1,0 +1,31 @@
+
+> smart-sense-demo@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.15
+   - Local:        http://localhost:3000
+   - Network:      http://10.123.88.122:3000
+
+ ✓ Starting...
+ ✓ Ready in 2.6s
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 6.1s (1710 modules)
+ GET /dashboard 200 in 7143ms
+ GET /dashboard 200 in 222ms
+ ○ Compiling /desglose ...
+ ✓ Compiled /desglose in 1445ms (1737 modules)
+ GET /desglose 200 in 2110ms
+ ○ Compiling /alertas ...
+ ✓ Compiled /alertas in 653ms (1734 modules)
+ GET /alertas 200 in 1189ms
+ ○ Compiling /reporte ...
+ ✓ Compiled /reporte in 1043ms (1749 modules)
+ GET /reporte 200 in 1860ms
+ ○ Compiling /ajustes ...
+ ✓ Compiled /ajustes in 848ms (1764 modules)
+ GET /ajustes 200 in 1433ms
+ GET /dashboard 200 in 605ms
+ GET /desglose 200 in 230ms
+ GET /reporte 200 in 171ms
+ GET /ajustes 200 in 210ms
+ GET /dashboard 200 in 212ms
