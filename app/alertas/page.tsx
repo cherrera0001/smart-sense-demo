@@ -15,27 +15,39 @@ export default function AlertasPage() {
     if (tipo === 'anomalia') {
       return {
         icon: <AlertTriangle className="w-5 h-5" />,
-        badgeColor: 'bg-severity-warning/15 text-severity-warning border border-severity-warning/30',
+        badgeStyle: {
+          backgroundColor: 'var(--severity-warning-bg)',
+          color: 'var(--severity-warning)',
+          borderColor: 'var(--severity-warning-ring)',
+        },
         severityLabel: 'Anomalía',
-        accentColor: '#FBBF24',
-        accentText: 'text-severity-warning',
+        accentColor: 'var(--severity-warning)',
+        iconColor: 'text-severity-warning',
       }
     }
     if (tipo === 'sugerencia') {
       return {
         icon: <Lightbulb className="w-5 h-5" />,
-        badgeColor: 'bg-severity-info/15 text-severity-info border border-severity-info/30',
+        badgeStyle: {
+          backgroundColor: 'var(--severity-info-bg)',
+          color: 'var(--severity-info)',
+          borderColor: 'var(--severity-info-ring)',
+        },
         severityLabel: 'Sugerencia',
-        accentColor: '#60A5FA',
-        accentText: 'text-severity-info',
+        accentColor: 'var(--severity-info)',
+        iconColor: 'text-severity-info',
       }
     }
     return {
       icon: <AlertCircle className="w-5 h-5" />,
-      badgeColor: 'bg-severity-critical/15 text-severity-critical border border-severity-critical/30',
+      badgeStyle: {
+        backgroundColor: 'var(--severity-critical-bg)',
+        color: 'var(--severity-critical)',
+        borderColor: 'var(--severity-critical-ring)',
+      },
       severityLabel: 'Crítica',
-      accentColor: '#F87171',
-      accentText: 'text-severity-critical',
+      accentColor: 'var(--severity-critical)',
+      iconColor: 'text-severity-critical',
     }
   }
 
@@ -83,8 +95,8 @@ export default function AlertasPage() {
                   <div className="space-y-4">
                     {/* Top Row: Badge + Status */}
                     <div className="flex items-start justify-between gap-3">
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${styles.badgeColor}`}>
-                        <div className={styles.accentText}>{styles.icon}</div>
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border" style={{...styles.badgeStyle, borderWidth: '1px'}}>
+                        <div style={{color: styles.accentColor}}>{styles.icon}</div>
                         <span>{styles.severityLabel}</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -110,7 +122,7 @@ export default function AlertasPage() {
                       <div className="flex items-baseline gap-3 pt-2 border-t border-text-tertiary/10">
                         <div className="flex items-baseline gap-1">
                           <span className="text-xs text-text-tertiary font-medium uppercase tracking-wider">Ahorro:</span>
-                          <span className={`text-lg font-bold tabular ${styles.accentText}`}>
+                          <span className="text-lg font-bold tabular" style={{color: styles.accentColor}}>
                             {formatCLP(alerta.ahorroEstimadoClp)}
                           </span>
                         </div>
@@ -136,15 +148,13 @@ export default function AlertasPage() {
               <div className="space-y-4 pb-6 border-b border-text-tertiary/15">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 flex-1">
-                    <div className={`p-3 rounded-full bg-gradient-to-br ${
-                      selected.tipo === 'anomalia' ? 'from-severity-warning/20 to-severity-warning/10' :
-                      selected.tipo === 'sugerencia' ? 'from-severity-info/20 to-severity-info/10' :
-                      'from-severity-critical/20 to-severity-critical/10'
-                    }`}>
-                      <div className={styles.accentText}>{styles.icon}</div>
+                    <div className="p-3 rounded-full bg-gradient-to-br" style={{
+                      background: `linear-gradient(135deg, var(--severity-${selected.tipo === 'anomalia' ? 'warning' : selected.tipo === 'sugerencia' ? 'info' : 'critical'}-gradient-from), var(--severity-${selected.tipo === 'anomalia' ? 'warning' : selected.tipo === 'sugerencia' ? 'info' : 'critical'}-gradient-to))`
+                    }}>
+                      <div style={{color: styles.accentColor}}>{styles.icon}</div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3 ${styles.badgeColor}`}>
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold mb-3 border" style={{...styles.badgeStyle, borderWidth: '1px'}}>
                         <span>{styles.severityLabel}</span>
                         {!selected.leida && <div className="w-1.5 h-1.5 bg-current rounded-full" />}
                       </div>

@@ -1,10 +1,14 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { LayoutShell } from '@/components/layout/LayoutShell'
 import { HeroNumerico } from '@/components/dashboard/HeroNumerico'
-import { ProyeccionMes } from '@/components/dashboard/ProyeccionMes'
 import { AlertasStrip } from '@/components/dashboard/AlertasStrip'
 import { QuickActions } from '@/components/dashboard/QuickActions'
+
+const ProyeccionMes = dynamic(() => import('@/components/dashboard/ProyeccionMes').then(mod => ({default: mod.ProyeccionMes})), {
+  ssr: false,
+})
 
 export default function DashboardPage() {
   return (

@@ -23,7 +23,7 @@ export function LayoutShell({ children }: LayoutShellProps) {
 
   if (!isDesktop) {
     return (
-      <div className="flex flex-col bg-ink min-h-screen w-full">
+      <div className="flex flex-col min-h-screen w-full transition-colors duration-300" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
         {children}
         <div className="h-20" />
         <BottomNav />
@@ -32,11 +32,11 @@ export function LayoutShell({ children }: LayoutShellProps) {
   }
 
   return (
-    <div className="flex bg-ink-2 min-h-screen">
+    <div className="flex min-h-screen transition-colors duration-300" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
       <Sidebar />
       <div className="flex-1 ml-60 flex items-center justify-center p-8">
         <IPhoneFrame visible={showFrame}>
-          <div className="flex flex-col bg-ink min-h-screen">
+          <div className="flex flex-col min-h-screen transition-colors duration-300" style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
             {children}
             <div className="h-20" />
           </div>

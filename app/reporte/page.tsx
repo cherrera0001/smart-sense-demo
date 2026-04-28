@@ -1,12 +1,48 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { LayoutShell } from '@/components/layout/LayoutShell'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { reporteSemanal } from '@/lib/mock-data'
 import { formatCLP } from '@/lib/format'
 import { Leaf, TrendingDown } from 'lucide-react'
+import { useTheme } from '@/lib/context/ThemeContext'
 
-export default function ReportePage() {
+function ReportePageContent() {
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  const [chartColors, setChartColors] = useState({
+    gridColor: '#3A4555',
+    axisColor: '#8A94A6',
+    tooltipBg: '#131D2E',
+    tooltipBorder: '#1A2437',
+    barColor: '#FF8A00',
+    textColor: '#F8F9FB'
+  })
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    const root = document.documentElement
+    const styles = getComputedStyle(root)
+
+    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+    setChartColors({
+      gridColor: isDark ? '#3A4555' : '#E5E7EB',
+      axisColor: isDark ? '#8A94A6' : '#6B7280',
+      tooltipBg: isDark ? '#131D2E' : '#FFFFFF',
+      tooltipBorder: isDark ? '#1A2437' : '#F3F4F6',
+      barColor: styles.getPropertyValue('--brand-primary').trim() || '#FF8A00',
+      textColor: isDark ? '#F8F9FB' : '#0F172A'
+    })
+  }, [theme, mounted])
+
   return (
     <LayoutShell>
       <div className="pb-24">
@@ -19,7 +55,10 @@ export default function ReportePage() {
         {/* Content Section */}
         <div className="page-section">
           {/* Ahorro Card */}
-          <div className="bg-gradient-to-br from-brand-primary/8 to-brand-primary/4 border border-brand-primary/20 rounded-lg p-6 space-y-3">
+          <div className="border rounded-lg p-6 space-y-3" style={{
+            background: `linear-gradient(135deg, var(--brand-primary-gradient-from), var(--brand-primary-gradient-to))`,
+            borderColor: 'rgba(255, 138, 0, 0.2)'
+          }}>
             <div className="flex items-center gap-2">
               <TrendingDown className="w-5 h-5 text-brand-primary" />
               <h2 className="card-subtitle">Ahorro esta semana</h2>
@@ -33,7 +72,10 @@ export default function ReportePage() {
           </div>
 
           {/* Huella de carbono Card */}
-          <div className="bg-gradient-to-br from-severity-info/8 to-severity-info/4 border border-severity-info/20 rounded-lg p-6 space-y-3">
+          <div className="border rounded-lg p-6 space-y-3" style={{
+            background: `linear-gradient(135deg, var(--severity-info-gradient-from), var(--severity-info-gradient-to))`,
+            borderColor: 'var(--severity-info-ring)'
+          }}>
             <div className="flex items-center gap-2">
               <Leaf className="w-5 h-5 text-severity-info" />
               <h2 className="card-subtitle">Huella de carbono</h2>
@@ -53,24 +95,24 @@ export default function ReportePage() {
             </div>
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={reporteSemanal.comparativa} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="0" stroke="#3A4555" vertical={false} />
-                <XAxis dataKey="semana" stroke="#8A94A6" style={{ fontSize: '12px', fontWeight: '500' }} />
-                <YAxis stroke="#8A94A6" style={{ fontSize: '12px' }} />
+                <CartesianGrid strokeDasharray="0" stroke={chartColors.gridColor} vertical={false} />
+                <XAxis dataKey="semana" stroke={chartColors.axisColor} style={{ fontSize: '12px', fontWeight: '500' }} />
+                <YAxis stroke={chartColors.axisColor} style={{ fontSize: '12px' }} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#131D2E',
-                    border: '1px solid #1A2437',
+                    backgroundColor: chartColors.tooltipBg,
+                    border: `1px solid ${chartColors.tooltipBorder}`,
                     borderRadius: '10px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                     padding: '12px 16px',
                   }}
-                  labelStyle={{ color: '#F8F9FB', fontWeight: '600', marginBottom: '4px' }}
+                  labelStyle={{ color: chartColors.textColor, fontWeight: '600', marginBottom: '4px' }}
                   formatter={(value: any) => `$${value.toLocaleString('es-CL')}`}
                   cursor={{ fill: 'rgba(255, 138, 0, 0.08)' }}
                 />
                 <Bar
                   dataKey="clp"
-                  fill="#FF8A00"
+                  fill={chartColors.barColor}
                   radius={[8, 8, 0, 0]}
                   isAnimationActive={false}
                 />
@@ -82,3 +124,7 @@ export default function ReportePage() {
     </LayoutShell>
   )
 }
+
+export default dynamic(() => Promise.resolve(ReportePageContent), {
+  ssr: false,
+})

@@ -1,9 +1,42 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { consumoHoy } from '@/lib/mock-data'
+import { useTheme } from '@/lib/context/ThemeContext'
 
 export function ProyeccionMes() {
+  const { theme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  const [chartColors, setChartColors] = useState({
+    gridColor: '#3A4555',
+    axisColor: '#8A94A6',
+    tooltipBg: '#131D2E',
+    tooltipBorder: '#1A2437',
+    areaColor: '#FF8A00',
+    areaColor2: '#FBBF24',
+    textColor: '#F8F9FB'
+  })
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+    setChartColors({
+      gridColor: isDark ? '#3A4555' : '#E5E7EB',
+      axisColor: isDark ? '#8A94A6' : '#6B7280',
+      tooltipBg: isDark ? '#131D2E' : '#FFFFFF',
+      tooltipBorder: isDark ? '#1A2437' : '#F3F4F6',
+      areaColor: '#FF8A00',
+      areaColor2: '#FBBF24',
+      textColor: isDark ? '#F8F9FB' : '#0F172A'
+    })
+  }, [theme, mounted])
   return (
     <div className="p-8">
       <div className="bg-gradient-to-br from-surface-primary to-surface-secondary rounded-lg border border-text-tertiary/15 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -26,18 +59,18 @@ export function ProyeccionMes() {
                 <stop offset="100%" stopColor="#FBBF24" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="0" stroke="#3A4555" vertical={false} />
-            <XAxis dataKey="dia" stroke="#8A94A6" style={{ fontSize: '12px', fontWeight: '500' }} />
-            <YAxis stroke="#8A94A6" style={{ fontSize: '12px' }} width={40} />
+            <CartesianGrid strokeDasharray="0" stroke={chartColors.gridColor} vertical={false} />
+            <XAxis dataKey="dia" stroke={chartColors.axisColor} style={{ fontSize: '12px', fontWeight: '500' }} />
+            <YAxis stroke={chartColors.axisColor} style={{ fontSize: '12px' }} width={40} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#131D2E',
-                border: '1px solid #1A2437',
+                backgroundColor: chartColors.tooltipBg,
+                border: `1px solid ${chartColors.tooltipBorder}`,
                 borderRadius: '10px',
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                 padding: '12px 16px',
               }}
-              labelStyle={{ color: '#F8F9FB', fontWeight: '600', marginBottom: '4px' }}
+              labelStyle={{ color: chartColors.textColor, fontWeight: '600', marginBottom: '4px' }}
               formatter={(value: number, name: string, props) => {
                 const isProjection = props.payload.esProyeccion
                 return [
@@ -50,7 +83,7 @@ export function ProyeccionMes() {
             <Area
               type="monotone"
               dataKey="clpAcumulado"
-              stroke="#FF8A00"
+              stroke={chartColors.areaColor}
               fillOpacity={1}
               fill="url(#colorCLP)"
               strokeWidth={2}

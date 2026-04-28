@@ -24,41 +24,101 @@ html.dark {
   --bg-secondary: #0D1525;
   --surface-primary: #131D2E;
   --surface-secondary: #1A2437;
-  --text-primary: #F8F9FB;
-  --text-secondary: #B0BAC6;
-  --text-tertiary: #8A94A6;
-  --border-color: #2A3447;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-tertiary: #94A3B8;
+  --border-color: #334155;
   --brand-primary: #FF8A00;
-  --brand-primary-dark: #E67E00;
+  --brand-primary-dark: #CC6E00;
   --success: #10B981;
   --warning: #FBBF24;
   --error: #EF4444;
-  --info: #3B82F6;
+  --info: #60A5FA;
+
+  /* Severity colors - dark */
+  --severity-critical: #F87171;
+  --severity-critical-bg: rgba(248, 113, 113, 0.15);
+  --severity-critical-ring: rgba(248, 113, 113, 0.30);
+  --severity-warning: #FBBF24;
+  --severity-warning-bg: rgba(251, 191, 36, 0.15);
+  --severity-warning-ring: rgba(251, 191, 36, 0.30);
+  --severity-info: #60A5FA;
+  --severity-info-bg: rgba(96, 165, 250, 0.15);
+  --severity-info-ring: rgba(96, 165, 250, 0.30);
+  --severity-success: #10B981;
+  --severity-success-bg: rgba(16, 185, 129, 0.15);
+  --severity-success-ring: rgba(16, 185, 129, 0.30);
+
+  /* Gradient variants - dark */
+  --severity-critical-gradient-from: rgba(248, 113, 113, 0.20);
+  --severity-critical-gradient-to: rgba(248, 113, 113, 0.10);
+  --severity-warning-gradient-from: rgba(251, 191, 36, 0.20);
+  --severity-warning-gradient-to: rgba(251, 191, 36, 0.10);
+  --severity-info-gradient-from: rgba(96, 165, 250, 0.20);
+  --severity-info-gradient-to: rgba(96, 165, 250, 0.10);
+  --brand-primary-gradient-from: rgba(255, 138, 0, 0.08);
+  --brand-primary-gradient-to: rgba(255, 138, 0, 0.04);
+
+  /* Chart colors - dark */
+  --chart-grid-color: #3A4555;
+  --chart-axis-color: #8A94A6;
+  --chart-tooltip-bg: #131D2E;
+  --chart-tooltip-border: #1A2437;
 }
 
 /* Light theme */
 html.light {
-  --bg-primary: #F8F9FB;
-  --bg-secondary: #F3F4F6;
+  --bg-primary: #F7F8FB;
+  --bg-secondary: #EEF2F7;
   --surface-primary: #FFFFFF;
-  --surface-secondary: #F3F4F6;
-  --text-primary: #0A0F1B;
-  --text-secondary: #4B5563;
-  --text-tertiary: #6B7280;
-  --border-color: #E5E7EB;
+  --surface-secondary: #F1F5F9;
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-tertiary: #64748B;
+  --border-color: #CBD5E1;
   --brand-primary: #FF8A00;
-  --brand-primary-dark: #E67E00;
+  --brand-primary-dark: #CC6E00;
   --success: #059669;
-  --warning: #D97706;
+  --warning: #B45309;
   --error: #DC2626;
-  --info: #0052CC;
+  --info: #1D4ED8;
+
+  /* Severity colors - light */
+  --severity-critical: #DC2626;
+  --severity-critical-bg: rgba(220, 38, 38, 0.15);
+  --severity-critical-ring: rgba(220, 38, 38, 0.30);
+  --severity-warning: #B45309;
+  --severity-warning-bg: rgba(180, 83, 9, 0.15);
+  --severity-warning-ring: rgba(180, 83, 9, 0.30);
+  --severity-info: #1D4ED8;
+  --severity-info-bg: rgba(29, 78, 216, 0.15);
+  --severity-info-ring: rgba(29, 78, 216, 0.30);
+  --severity-success: #059669;
+  --severity-success-bg: rgba(5, 150, 105, 0.15);
+  --severity-success-ring: rgba(5, 150, 105, 0.30);
+
+  /* Gradient variants - light */
+  --severity-critical-gradient-from: rgba(220, 38, 38, 0.12);
+  --severity-critical-gradient-to: rgba(220, 38, 38, 0.06);
+  --severity-warning-gradient-from: rgba(180, 83, 9, 0.12);
+  --severity-warning-gradient-to: rgba(180, 83, 9, 0.06);
+  --severity-info-gradient-from: rgba(29, 78, 216, 0.12);
+  --severity-info-gradient-to: rgba(29, 78, 216, 0.06);
+  --brand-primary-gradient-from: rgba(255, 138, 0, 0.06);
+  --brand-primary-gradient-to: rgba(255, 138, 0, 0.03);
+
+  /* Chart colors - light */
+  --chart-grid-color: #E5E7EB;
+  --chart-axis-color: #6B7280;
+  --chart-tooltip-bg: #FFFFFF;
+  --chart-tooltip-border: #F3F4F6;
 }
 
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
   transition: background-color 300ms ease, color 300ms ease;
 }
 
@@ -83,6 +143,11 @@ a {
   transition: all 150ms ease-in-out;
 }
 
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
 @layer components {
   /* PAGE STRUCTURE - STANDARDIZED */
   .page-header {
@@ -96,7 +161,7 @@ a {
   }
 
   .page-subtitle {
-    @apply text-sm;
+    @apply text-base;
     color: var(--text-secondary);
   }
 
@@ -124,7 +189,7 @@ a {
   }
 
   .card-hover {
-    @apply hover:shadow-md;
+    @apply hover:shadow-md hover:-translate-y-0.5;
   }
 
   .card-premium {
@@ -151,7 +216,7 @@ a {
   }
 
   .btn-primary {
-    @apply btn-base px-6 rounded-lg text-white active:scale-95;
+    @apply btn-base px-6 py-3 rounded-lg text-white active:scale-95;
     background-color: var(--brand-primary);
   }
 
@@ -160,7 +225,7 @@ a {
   }
 
   .btn-secondary {
-    @apply btn-base px-4 py-3 rounded-lg border;
+    @apply btn-base px-4 py-3 rounded-lg border font-medium;
     color: var(--text-secondary);
     border-color: var(--border-color);
     background-color: var(--surface-secondary);
