@@ -1,10 +1,14 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { LayoutShell } from '@/components/layout/LayoutShell'
 import { Badge } from '@/components/ui/badge'
-import { ThemeToggle } from '@/components/theme/ThemeToggle'
 import { enchufes as mockEnchufes, tarifa } from '@/lib/mock-data'
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react'
+
+const ThemeToggle = dynamic(() => import('@/components/theme/ThemeToggle').then(mod => ({default: mod.ThemeToggle})), {
+  ssr: false,
+})
 
 export default function AjustesPage() {
   return (
