@@ -5,10 +5,11 @@
 ### Plan de Escalamiento: Demo → MVP Usable
 Status: **SEMANA 0 - ALINEACIÓN**
 
-**Documentos de ejecución:**
-- [`EXECUTION_PLAN.md`](./EXECUTION_PLAN.md) — Plan de 4 fases (0–4 semanas) con gates de decisión
-- [`BACKLOG_QUICK_WINS.md`](./BACKLOG_QUICK_WINS.md) — 5 tareas concretas (Semana 1, 3 días)
-- [`BACKLOG_MVP_BACKEND.md`](./BACKLOG_MVP_BACKEND.md) — 8 tareas backend (Semanas 1.5–3, 2.5 semanas)
+**Documentos de ejecución (en `docs/00-Gobierno/`):**
+- [`EXECUTION_PLAN.md`](./docs/00-Gobierno/EXECUTION_PLAN.md) — Plan de 4 fases (0–4 semanas) con gates de decisión
+- [`BACKLOG_QUICK_WINS.md`](./docs/00-Gobierno/BACKLOG_QUICK_WINS.md) — 5 tareas concretas (Semana 1, 3 días)
+- [`BACKLOG_MVP_BACKEND.md`](./docs/00-Gobierno/BACKLOG_MVP_BACKEND.md) — 8 tareas backend (Semanas 1.5–3, 2.5 semanas)
+- [`README_EJECUCION.md`](./docs/00-Gobierno/README_EJECUCION.md) — Guía rápida: roles, checklist, FAQs
 
 **Decisión de proyecto:** [✅] MVP USABLE (no solo demo)
 

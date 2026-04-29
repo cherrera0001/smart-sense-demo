@@ -13,11 +13,20 @@ type: reference
 
 ## 📚 Índice por Categoría
 
-### 00 — Gobierno (1 documento)
+### 00 — Gobierno (5 documentos)
 
+#### Criterios & Normas
 | Documento | Descripción | Tipo | Estado |
 |-----------|-------------|------|--------|
 | [DEFINITION_OF_DONE.md](./00-Gobierno/DEFINITION_OF_DONE.md) | 19 criterios binarios para aceptar features | project | active |
+
+#### Plan de Ejecución (Nuevo)
+| Documento | Descripción | Tipo | Estado |
+|-----------|-------------|------|--------|
+| [EXECUTION_PLAN.md](./00-Gobierno/EXECUTION_PLAN.md) | Plan maestro: 4 fases + 3 gates (demo → MVP en 4 semanas) | project | active |
+| [BACKLOG_QUICK_WINS.md](./00-Gobierno/BACKLOG_QUICK_WINS.md) | 5 tareas concretas Semana 1 (3 días, 15h) — archivo por archivo | project | active |
+| [BACKLOG_MVP_BACKEND.md](./00-Gobierno/BACKLOG_MVP_BACKEND.md) | 8 tareas backend Semanas 1.5–3 (2.5 sem, 37h) — backend-first | project | active |
+| [README_EJECUCION.md](./00-Gobierno/README_EJECUCION.md) | Guía rápida: roles, checklist semanal, FAQs, cómo empezar HOY | reference | active |
 
 ---
 
@@ -128,13 +137,14 @@ type: reference
 
 | Métrica | Cantidad |
 |---------|----------|
-| **Documentos Totales** | 24 |
-| **Activos** | 18 |
+| **Documentos Totales** | 28 |
+| **Activos** | 22 |
 | **Archivados** | 5 |
 | **Obsoletos** | 1 |
 | **Categorías** | 6 |
 | **Reportes con Fecha** | 3 |
 | **README.md (Índices)** | 7 |
+| **Plan de Ejecución** | 4 (nuevo) |
 
 ---
 
