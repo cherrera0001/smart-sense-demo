@@ -1,5 +1,33 @@
 # Contexto para Agentes — SmartSense Demo
 
+## 🚦 EJECUCIÓN EN PROGRESO (Apr 28, 2026)
+
+### Plan de Escalamiento: Demo → MVP Usable
+Status: **SEMANA 0 - ALINEACIÓN**
+
+**Documentos de ejecución:**
+- [`EXECUTION_PLAN.md`](./EXECUTION_PLAN.md) — Plan de 4 fases (0–4 semanas) con gates de decisión
+- [`BACKLOG_QUICK_WINS.md`](./BACKLOG_QUICK_WINS.md) — 5 tareas concretas (Semana 1, 3 días)
+- [`BACKLOG_MVP_BACKEND.md`](./BACKLOG_MVP_BACKEND.md) — 8 tareas backend (Semanas 1.5–3, 2.5 semanas)
+
+**Decisión de proyecto:** [✅] MVP USABLE (no solo demo)
+
+**Objetivo final (Semana 4):** Usuario puede registrarse → ver consumo real → marcar alertas leídas (persistente)
+
+**Gates:**
+- [ ] **Gate 1 (Semana 1):** Usuario entiende qué es demo, estado básico persiste
+- [ ] **Gate 2 (Semana 3):** 2 flujos E2E funcionales, tests pasan, zero mock en rutas autenticadas
+- [ ] **Gate 3 (Semana 4):** Validación con 5–10 usuarios beta, señal de valor clara
+
+**Próximos pasos:**
+1. Ejecutar tareas 1–5 en BACKLOG_QUICK_WINS.md (3 días)
+2. Crear backend/ repo (Node + PostgreSQL)
+3. Ejecutar tareas B1–B8 en BACKLOG_MVP_BACKEND.md (2.5 semanas, paralelo con frontend)
+4. Integración frontend-backend (semana 3)
+5. Validación usuario (semana 4)
+
+---
+
 ## 📋 Resumen del Proyecto (Apr 28, 2026)
 
 **SmartSense** es un mockup funcional de dashboard de gestión energética en tiempo real. Incluye:
@@ -145,6 +173,46 @@ smart-sense-demo/
 - [ ] Number formatting precision (1 vs 2 decimales)
 - [ ] Empty state patterns
 - [ ] Hover state opacity consolidation
+
+## 🧭 Backend-First Workflow (estándar de ejecución)
+
+Cuando se inicie backend en este repo, seguir estrictamente este orden:
+
+1. **Dominio y alcance**
+   - Definir modulos (bounded contexts), entidades, actores y casos de uso.
+2. **Modelo de datos**
+   - Diseñar tablas, relaciones, PK/FK, indices, constraints y auditoria (`created_at`, `updated_at`, `deleted_at`).
+3. **Contrato API**
+   - Publicar OpenAPI v1 (endpoints, payloads, errores, paginacion/filtros, versionado).
+4. **Implementación**
+   - Construir por capas (`domain`, `application`, `infrastructure`, `api`) empezando por 2-3 flujos criticos.
+5. **Calidad**
+   - Ejecutar tests unitarios de dominio, integracion repositorio+DB y contract tests contra OpenAPI.
+
+### Reglas de operación para agentes
+
+- No saltar fases (dominio -> DB -> API -> implementación -> tests).
+- No implementar endpoints sin contrato definido.
+- Si hay ambiguedad, proponer 2 opciones con trade-offs y recomendar 1.
+- Mantener cambios pequenos y verificables por fase.
+- Antes de codificar, listar archivos a tocar y criterio de terminado.
+
+### Prompt base recomendado para Claude Code (backend-first)
+
+```text
+Actúa como Staff Backend Engineer.
+Ejecuta backend-first en este orden sin saltos:
+1) Dominio (entidades, reglas, invariantes)
+2) Modelo de datos (tablas, relaciones, PK/FK, indices, constraints)
+3) Contrato API OpenAPI v1 (schemas, errores, paginación, filtros)
+4) Implementación por capas (domain/application/infrastructure/api)
+5) Tests (unit, integration, contract)
+
+Reglas:
+- No inventar features fuera de alcance.
+- Si falta contexto, hacer máximo 5 preguntas críticas.
+- Entregar por fase: decisiones, archivos tocados, código, riesgos y próximo paso.
+```
 
 ## 🚨 Importante para Agentes
 

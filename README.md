@@ -171,3 +171,18 @@ CLOUDFLARE_API_TOKEN=cfut_...     # Cloudflare API Token ✅
 Smart Sense Mock (defensa emprendimiento)
 - **Desarrollador:** Cristóbal Herrera (cherrera0001)
 - **Última actualización:** 2026-04-28
+
+## Proceso Backend-First
+
+Para construir backend con orden y sin retrabajo, seguir este flujo:
+
+1. Definir dominio y casos de uso por modulo.
+2. Diseñar modelo de datos y relaciones (PK/FK, cardinalidad, constraints).
+3. Definir contrato API (OpenAPI) antes de handlers.
+4. Implementar casos de uso criticos end-to-end.
+5. Validar con tests unitarios, integracion y contrato.
+
+### Documentos de referencia operativa
+
+- Reglas y workflow para agentes: `CLAUDE.md`
+- Documentacion estructurada: `docs/`
