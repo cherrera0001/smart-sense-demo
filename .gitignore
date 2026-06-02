@@ -7,11 +7,19 @@ node_modules
 /coverage
 
 # Next.js
-/.next/
+.next/
 /out/
 
 # Production
 /build
+
+# Monorepo build outputs
+dist/
+*.tsbuildinfo
+.turbo/
+
+# Prisma generated client
+packages/db/src/generated/
 
 # Misc
 .DS_Store
@@ -40,3 +48,8 @@ yarn-error.log*
 Thumbs.db
 
 .vercel
+
+# PWA generados por next-pwa (build output)
+apps/web/public/sw.js*
+apps/web/public/workbox-*.js
+apps/web/public/fallback-*.js
