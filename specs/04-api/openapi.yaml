@@ -1,0 +1,1708 @@
+openapi: 3.1.0
+info:
+  title: SmartSense API
+  description: |
+    API REST de SmartSense / Home Energy — plataforma SaaS + IoT de monitoreo y gestión
+    energética (segmentos home, smb, business). Multi-tenant por `organization`, costos
+    siempre calculados en backend (CLP). Ver `api-overview.md`, `error-model.md` y
+    `auth-and-permissions.md` para convenciones transversales.
+  version: 1.0.0
+  contact:
+    name: SmartSense
+servers:
+  - url: https://api.smartsense.cl/v1
+    description: Producción
+  - url: https://staging-api.smartsense.cl/v1
+    description: Staging
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Autenticación, sesión y usuario actual (FR-AUTH).
+  - name: Organizations
+    description: Tenants raíz (FR-AUTH-001, FR-SET-008).
+  - name: Installations
+    description: Sitios físicos monitoreados (FR-ONB-008, FR-SET-002).
+  - name: Onboarding
+    description: Escaneo/claim de kit y emparejamiento de dispositivos (FR-ONB).
+  - name: Devices
+    description: Dispositivos físicos del kit (FR-ONB-005, FR-SET-003).
+  - name: Telemetry
+    description: Ingesta y consulta de telemetría (FR-DASH, IoT).
+  - name: Dashboard
+    description: Vista en vivo de la instalación (FR-DASH).
+  - name: Reports
+    description: Series agregadas por granularidad (FR-REP).
+  - name: Breakdown
+    description: Desglose por dispositivo/categoría (FR-BRK).
+  - name: Bills
+    description: Boletas eléctricas (FR-BILL).
+  - name: Alerts
+    description: Alertas de consumo (FR-ALRT).
+  - name: Recommendations
+    description: Recomendaciones de ahorro (FR-REC).
+  - name: Control
+    description: Control de dispositivos, programación y límites (FR-CTRL).
+
+paths:
+  # ---------------------------------------------------------------- AUTH
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Registro de usuario
+      description: Crea usuario, Organization implícita y Membership owner. FR-AUTH-001.
+      operationId: authRegister
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Cuenta, organización y sesión creadas.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Inicio de sesión
+      description: Autentica y emite par access+refresh. FR-AUTH-002.
+      operationId: authLogin
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Sesión iniciada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthSession' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cierre de sesión
+      description: Revoca el refresh token actual. FR-AUTH-004.
+      operationId: authLogout
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogoutRequest' }
+      responses:
+        '204': { description: Sesión cerrada. }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Usuario actual
+      description: Devuelve el usuario autenticado y sus memberships. FR-AUTH-002, FR-AUTH-009.
+      operationId: authMe
+      responses:
+        '200':
+          description: Usuario actual.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- ORGANIZATIONS
+  /organizations:
+    get:
+      tags: [Organizations]
+      summary: Listar organizaciones del usuario
+      description: Organizaciones donde el usuario tiene membership activa.
+      operationId: listOrganizations
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Lista paginada de organizaciones.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Organization' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Organizations]
+      summary: Crear organización
+      operationId: createOrganization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrganizationCreate' }
+      responses:
+        '201':
+          description: Organización creada (actor queda owner).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organization' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /organizations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Organizations]
+      summary: Obtener organización
+      operationId: getOrganization
+      responses:
+        '200':
+          description: Organización.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organization' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- INSTALLATIONS
+  /installations:
+    get:
+      tags: [Installations]
+      summary: Listar instalaciones
+      description: Instalaciones de la organización en contexto. FR-SET-002.
+      operationId: listInstallations
+      parameters:
+        - $ref: '#/components/parameters/OrganizationIdQuery'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: segment
+          in: query
+          schema: { $ref: '#/components/schemas/InstallationSegment' }
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, inactive] }
+      responses:
+        '200':
+          description: Lista paginada de instalaciones.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Installation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Installations]
+      summary: Crear instalación
+      description: Crea el sitio físico. FR-ONB-008.
+      operationId: createInstallation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstallationCreate' }
+      responses:
+        '201':
+          description: Instalación creada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Installation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /installations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Installations]
+      summary: Obtener instalación
+      operationId: getInstallation
+      responses:
+        '200':
+          description: Instalación con perfil.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstallationDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [Installations]
+      summary: Actualizar instalación
+      description: Edita nombre/dirección/zona horaria/tarifa/estado. FR-SET-002, FR-SET-004.
+      operationId: updateInstallation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstallationUpdate' }
+      responses:
+        '200':
+          description: Instalación actualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Installation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- ONBOARDING
+  /onboarding/kit/scan:
+    post:
+      tags: [Onboarding]
+      summary: Escanear QR del kit
+      description: Resuelve un QR contra energy_kits. FR-ONB-001.
+      operationId: scanKit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KitScanRequest' }
+      responses:
+        '200':
+          description: Kit resuelto.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnergyKit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /onboarding/kit/claim:
+    post:
+      tags: [Onboarding]
+      summary: Reclamar kit
+      description: Asocia un kit unclaimed a una instalación de la organización. FR-ONB-002.
+      operationId: claimKit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/KitClaimRequest' }
+      responses:
+        '200':
+          description: Kit reclamado (active).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EnergyKit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /onboarding/devices/pair:
+    post:
+      tags: [Onboarding]
+      summary: Confirmar emparejamiento de dispositivo
+      description: Acepta un DevicePairing recommended/paired y crea el Device. FR-ONB-004, FR-ONB-005.
+      operationId: pairDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DevicePairRequest' }
+      responses:
+        '200':
+          description: Dispositivo emparejado y creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /onboarding/status:
+    get:
+      tags: [Onboarding]
+      summary: Estado de progreso del onboarding
+      description: Avance kit→dispositivos→perfil→boleta. FR-ONB-007.
+      operationId: onboardingStatus
+      parameters:
+        - name: installationId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Estado del onboarding.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnboardingStatus' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- DEVICES
+  /installations/{installationId}/devices:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Devices]
+      summary: Listar dispositivos de la instalación
+      operationId: listDevices
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: state
+          in: query
+          schema: { $ref: '#/components/schemas/DeviceState' }
+      responses:
+        '200':
+          description: Lista paginada de dispositivos.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Device' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /devices:
+    post:
+      tags: [Devices]
+      summary: Crear dispositivo
+      description: Alta directa de un Device dentro de un kit/instalación. FR-ONB-005.
+      operationId: createDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceCreate' }
+      responses:
+        '201':
+          description: Dispositivo creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /devices/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    get:
+      tags: [Devices]
+      summary: Obtener dispositivo
+      operationId: getDevice
+      responses:
+        '200':
+          description: Dispositivo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [Devices]
+      summary: Actualizar dispositivo
+      description: Renombrar/categorizar. FR-SET-003.
+      operationId: updateDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceUpdate' }
+      responses:
+        '200':
+          description: Dispositivo actualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- TELEMETRY
+  /iot/telemetry:
+    post:
+      tags: [Telemetry]
+      summary: Ingesta de telemetría
+      description: |
+        Ingesta idempotente por `event_hash`. Responde 200 con `ingestion_status=accepted`
+        si es nueva, o `ingestion_status=duplicate` si el `event_hash` ya existía.
+        FR-DASH-001. Requiere scope de ingesta (token de kit/bridge).
+      operationId: ingestTelemetry
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TelemetryIngestRequest' }
+      responses:
+        '200':
+          description: Lectura aceptada o duplicada (idempotente).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TelemetryIngestResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /installations/{installationId}/telemetry/latest:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Telemetry]
+      summary: Última telemetría
+      description: Última lectura por dispositivo de la instalación. FR-DASH-001.
+      operationId: latestTelemetry
+      parameters:
+        - name: deviceId
+          in: query
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Últimas lecturas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TelemetryReading' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /installations/{installationId}/telemetry/range:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Telemetry]
+      summary: Telemetría por rango temporal
+      description: Serie cruda de telemetría en un rango. FR-BRK-006.
+      operationId: rangeTelemetry
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: deviceId
+          in: query
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Serie de lecturas paginada.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/TelemetryReading' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- DASHBOARD
+  /installations/{installationId}/dashboard:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Dashboard]
+      summary: Dashboard de la instalación
+      description: Potencia en vivo, kWh y CLP del día, estado del kit, alertas open. FR-DASH-001..007.
+      operationId: getDashboard
+      responses:
+        '200':
+          description: Snapshot del dashboard.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- REPORTS
+  /installations/{installationId}/reports/daily:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Reports]
+      summary: Reporte diario
+      description: Serie de buckets day. FR-REP-001.
+      operationId: reportDaily
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Serie diaria.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /installations/{installationId}/reports/weekly:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Reports]
+      summary: Reporte semanal
+      description: Serie de buckets week. FR-REP-002.
+      operationId: reportWeekly
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Serie semanal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /installations/{installationId}/reports/monthly:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Reports]
+      summary: Reporte mensual
+      description: Serie de buckets month. FR-REP-003.
+      operationId: reportMonthly
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+      responses:
+        '200':
+          description: Serie mensual.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /installations/{installationId}/reports/last-three-months:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Reports]
+      summary: Reporte últimos 3 meses
+      description: Tendencia de hasta 3 buckets month. FR-REP-004.
+      operationId: reportLastThreeMonths
+      responses:
+        '200':
+          description: Tendencia trimestral.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- BREAKDOWN
+  /installations/{installationId}/breakdown:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Breakdown]
+      summary: Desglose de consumo
+      description: Por dispositivo y categoría, con %, ranking y total. FR-BRK-001..005.
+      operationId: getBreakdown
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - name: groupBy
+          in: query
+          schema: { type: string, enum: [device, category], default: device }
+      responses:
+        '200':
+          description: Desglose del periodo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Breakdown' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- BILLS
+  /installations/{installationId}/bills:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Bills]
+      summary: Listar boletas
+      operationId: listBills
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/BillStatus' }
+      responses:
+        '200':
+          description: Lista paginada de boletas.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/ElectricityBill' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    post:
+      tags: [Bills]
+      summary: Crear boleta
+      description: Carga manual de boleta (metadatos + file_url). FR-BILL-001..006.
+      operationId: createBill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BillCreate' }
+      responses:
+        '201':
+          description: Boleta creada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ElectricityBill' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- ALERTS
+  /installations/{installationId}/alerts:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Alerts]
+      summary: Listar alertas
+      operationId: listAlerts
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/AlertStatus' }
+        - name: severity
+          in: query
+          schema: { $ref: '#/components/schemas/AlertSeverity' }
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/AlertType' }
+      responses:
+        '200':
+          description: Lista paginada de alertas.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Alert' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /alerts/{id}/review:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [Alerts]
+      summary: Revisar alerta
+      description: Marca una alerta como reviewed o dismissed. FR-ALRT-005.
+      operationId: reviewAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlertReviewRequest' }
+      responses:
+        '200':
+          description: Alerta actualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Alert' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- RECOMMENDATIONS
+  /installations/{installationId}/recommendations:
+    parameters:
+      - $ref: '#/components/parameters/InstallationIdPath'
+    get:
+      tags: [Recommendations]
+      summary: Listar recomendaciones
+      description: Recomendaciones ordenadas por prioridad/impacto. FR-REC-001..005.
+      operationId: listRecommendations
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/RecommendationStatus' }
+      responses:
+        '200':
+          description: Lista paginada de recomendaciones.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedEnvelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Recommendation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  # ---------------------------------------------------------------- CONTROL
+  /devices/{deviceId}/control-actions:
+    parameters:
+      - $ref: '#/components/parameters/DeviceIdPath'
+    post:
+      tags: [Control]
+      summary: Ejecutar acción de control
+      description: Crea ControlAction (turn_on/turn_off/set_limit). Requiere operator+. FR-CTRL-001/002/009.
+      operationId: createControlAction
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ControlActionCreate' }
+      responses:
+        '202':
+          description: Acción aceptada (pending), resolución asíncrona. FR-CTRL-008.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ControlAction' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /devices/{deviceId}/control-schedules:
+    parameters:
+      - $ref: '#/components/parameters/DeviceIdPath'
+    post:
+      tags: [Control]
+      summary: Crear programación horaria
+      description: Crea ControlSchedule. Requiere operator+. FR-CTRL-004.
+      operationId: createControlSchedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ControlScheduleCreate' }
+      responses:
+        '201':
+          description: Programación creada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ControlSchedule' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /devices/{deviceId}/consumption-limits:
+    parameters:
+      - $ref: '#/components/parameters/DeviceIdPath'
+    post:
+      tags: [Control]
+      summary: Crear límite de consumo
+      description: Crea ConsumptionLimit. Requiere operator+. FR-CTRL-005.
+      operationId: createConsumptionLimit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConsumptionLimitCreate' }
+      responses:
+        '201':
+          description: Límite creado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsumptionLimit' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /devices/{deviceId}/control-state:
+    parameters:
+      - $ref: '#/components/parameters/DeviceIdPath'
+    get:
+      tags: [Control]
+      summary: Estado de control del dispositivo
+      description: Estado on/off/unknown y última acción. FR-CTRL-003.
+      operationId: getControlState
+      responses:
+        '200':
+          description: Estado de control.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ControlState' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Access token JWT (claims `sub`, `org`, `role`, `exp`). Ver `auth-and-permissions.md`.
+        El scope de ingesta de telemetría usa un token de kit/bridge con claim `scope=telemetry:ingest`.
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: Identificador UUID del recurso.
+      schema: { type: string, format: uuid }
+    InstallationIdPath:
+      name: installationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    DeviceIdPath:
+      name: deviceId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    OrganizationIdQuery:
+      name: organizationId
+      in: query
+      description: Tenant en contexto. Si se omite, se usa la organización por defecto del token.
+      required: false
+      schema: { type: string, format: uuid }
+    Cursor:
+      name: cursor
+      in: query
+      description: Cursor opaco de paginación (devuelto en page_info.next_cursor).
+      required: false
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      description: Tamaño de página.
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    From:
+      name: from
+      in: query
+      description: Inicio del rango (ISO8601 UTC, inclusive).
+      required: true
+      schema: { type: string, format: date-time }
+    To:
+      name: to
+      in: query
+      description: Fin del rango (ISO8601 UTC, exclusivo).
+      required: true
+      schema: { type: string, format: date-time }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: Clave de idempotencia para reintentos seguros de operaciones de escritura.
+      required: false
+      schema: { type: string, maxLength: 255 }
+
+  responses:
+    BadRequest:
+      description: Solicitud malformada.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthorized:
+      description: No autenticado o token inválido/expirado.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Autenticado pero sin permiso (rol insuficiente o cross-tenant).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Recurso inexistente o fuera del tenant.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Conflicto de estado (p. ej. KIT_ALREADY_CLAIMED, email existente).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    UnprocessableEntity:
+      description: Validación de negocio fallida.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    TooManyRequests:
+      description: Rate limit excedido.
+      headers:
+        Retry-After:
+          schema: { type: integer }
+          description: Segundos hasta reintentar.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    InternalError:
+      description: Error interno.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+    # ---------------- enums (canon) ----------------
+    InstallationSegment:
+      type: string
+      enum: [home, smb, business]
+    MembershipRole:
+      type: string
+      enum: [owner, admin, operator, viewer]
+    MembershipStatus:
+      type: string
+      enum: [active, invited, revoked]
+    PairingStatus:
+      type: string
+      enum: [paired, recommended, scanning, unpaired, error]
+    DeviceState:
+      type: string
+      enum: [online, offline, unknown]
+    KitStatus:
+      type: string
+      enum: [unclaimed, active, transferring, retired]
+    ControlActionType:
+      type: string
+      enum: [turn_on, turn_off, set_limit]
+    ControlActionStatus:
+      type: string
+      enum: [pending, success, failed, rejected]
+    AlertSeverity:
+      type: string
+      enum: [info, warning, critical]
+    AlertStatus:
+      type: string
+      enum: [open, reviewed, dismissed]
+    AlertType:
+      type: string
+      enum: [anomaly, high_device, over_budget, offline]
+    RecommendationSource:
+      type: string
+      enum: [alert, periodic_analysis]
+    RecommendationStatus:
+      type: string
+      enum: [new, applied, dismissed]
+    BillStatus:
+      type: string
+      enum: [uploaded, parsed, confirmed]
+    IngestionStatus:
+      type: string
+      enum: [accepted, duplicate, invalid]
+    AggregateGranularity:
+      type: string
+      enum: [hour, day, week, month]
+    LimitWindow:
+      type: string
+      enum: [day, month]
+    ActionOnExceed:
+      type: string
+      enum: [alert, turn_off]
+    OrgPlan:
+      type: string
+      enum: [free, pro, enterprise]
+    UserStatus:
+      type: string
+      enum: [active, suspended]
+    InstallationStatus:
+      type: string
+      enum: [active, inactive]
+
+    # ---------------- error ----------------
+    ErrorResponse:
+      type: object
+      required: [code, message, traceId]
+      properties:
+        code:
+          type: string
+          description: Código de negocio estable (ver error-model.md).
+          examples: [KIT_ALREADY_CLAIMED, CROSS_TENANT_DENIED, VALIDATION_ERROR]
+        message:
+          type: string
+          description: Mensaje legible (i18n es-CL).
+        details:
+          type: array
+          description: Detalles por campo u objeto auxiliar.
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              issue: { type: string }
+          nullable: true
+        traceId:
+          type: string
+          description: Correlación de request para soporte/logging.
+
+    # ---------------- pagination ----------------
+    PageInfo:
+      type: object
+      required: [has_next]
+      properties:
+        has_next: { type: boolean }
+        next_cursor: { type: string, nullable: true }
+    PaginatedEnvelope:
+      type: object
+      required: [data, page_info]
+      properties:
+        data:
+          type: array
+          items: {}
+        page_info: { $ref: '#/components/schemas/PageInfo' }
+
+    # ---------------- auth ----------------
+    RegisterRequest:
+      type: object
+      required: [email, password, full_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password, minLength: 10, maxLength: 256 }
+        full_name: { type: string, minLength: 1 }
+        phone: { type: string, nullable: true }
+        organization_name: { type: string, nullable: true, description: Si se omite, se deriva del nombre del usuario. }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    LogoutRequest:
+      type: object
+      properties:
+        refresh_token: { type: string, description: Si se omite, se usa el de la sesión/cookie. }
+        all_sessions: { type: boolean, default: false }
+    AuthSession:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in, user]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        token_type: { type: string, enum: [Bearer], default: Bearer }
+        expires_in: { type: integer, description: Segundos de vida del access token. }
+        user: { $ref: '#/components/schemas/User' }
+        memberships:
+          type: array
+          items: { $ref: '#/components/schemas/Membership' }
+    User:
+      type: object
+      required: [id, email, full_name, locale, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        full_name: { type: string }
+        phone: { type: string, nullable: true }
+        locale: { type: string, default: es-CL }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        last_login_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Membership:
+      type: object
+      required: [id, user_id, organization_id, role, status]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        role: { $ref: '#/components/schemas/MembershipRole' }
+        status: { $ref: '#/components/schemas/MembershipStatus' }
+        invited_at: { type: string, format: date-time, nullable: true }
+        accepted_at: { type: string, format: date-time, nullable: true }
+    Me:
+      type: object
+      required: [user, memberships]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        memberships:
+          type: array
+          items: { $ref: '#/components/schemas/Membership' }
+
+    # ---------------- organization ----------------
+    Organization:
+      type: object
+      required: [id, name, plan, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        legal_id: { type: string, nullable: true, description: RUT u otro identificador legal. }
+        segment_default: { allOf: [ { $ref: '#/components/schemas/InstallationSegment' } ], nullable: true }
+        plan: { $ref: '#/components/schemas/OrgPlan' }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    OrganizationCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        legal_id: { type: string, nullable: true }
+        segment_default: { allOf: [ { $ref: '#/components/schemas/InstallationSegment' } ], nullable: true }
+
+    # ---------------- installation ----------------
+    Installation:
+      type: object
+      required: [id, organization_id, name, segment, timezone, status, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        organization_id: { type: string, format: uuid }
+        name: { type: string }
+        segment: { $ref: '#/components/schemas/InstallationSegment' }
+        address: { type: string, nullable: true }
+        timezone: { type: string, default: America/Santiago }
+        distributor_id: { type: string, format: uuid, nullable: true }
+        tariff_id: { type: string, format: uuid, nullable: true }
+        status: { $ref: '#/components/schemas/InstallationStatus' }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    InstallationDetail:
+      allOf:
+        - $ref: '#/components/schemas/Installation'
+        - type: object
+          properties:
+            profile: { allOf: [ { $ref: '#/components/schemas/InstallationProfile' } ], nullable: true }
+    InstallationProfile:
+      type: object
+      required: [id, installation_id, segment]
+      properties:
+        id: { type: string, format: uuid }
+        installation_id: { type: string, format: uuid }
+        segment: { $ref: '#/components/schemas/InstallationSegment' }
+        occupants: { type: integer, minimum: 0, nullable: true }
+        heating_system: { type: string, nullable: true }
+        critical_equipment: { type: object, additionalProperties: true, nullable: true }
+        declared_power_kw: { type: number, minimum: 0, nullable: true }
+        operating_hours: { type: object, additionalProperties: true, nullable: true }
+        extra: { type: object, additionalProperties: true, nullable: true }
+    InstallationCreate:
+      type: object
+      required: [organization_id, name, segment]
+      properties:
+        organization_id: { type: string, format: uuid }
+        name: { type: string, minLength: 1 }
+        segment: { $ref: '#/components/schemas/InstallationSegment' }
+        address: { type: string, nullable: true }
+        timezone: { type: string, default: America/Santiago }
+        distributor_id: { type: string, format: uuid, nullable: true }
+        tariff_id: { type: string, format: uuid, nullable: true }
+    InstallationUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1 }
+        address: { type: string, nullable: true }
+        timezone: { type: string }
+        distributor_id: { type: string, format: uuid, nullable: true }
+        tariff_id: { type: string, format: uuid, nullable: true }
+        status: { $ref: '#/components/schemas/InstallationStatus' }
+
+    # ---------------- onboarding / kit ----------------
+    EnergyKit:
+      type: object
+      required: [id, qr_code, serial, status]
+      properties:
+        id: { type: string, format: uuid }
+        installation_id: { type: string, format: uuid, nullable: true }
+        qr_code: { type: string }
+        serial: { type: string }
+        model: { type: string, nullable: true }
+        firmware_version: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/KitStatus' }
+        claimed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    KitScanRequest:
+      type: object
+      required: [qr_code]
+      properties:
+        qr_code: { type: string, minLength: 1 }
+    KitClaimRequest:
+      type: object
+      required: [qr_code, installation_id]
+      properties:
+        qr_code: { type: string, minLength: 1 }
+        installation_id: { type: string, format: uuid }
+    DevicePairing:
+      type: object
+      required: [id, kit_id, device_external_ref, status]
+      properties:
+        id: { type: string, format: uuid }
+        kit_id: { type: string, format: uuid }
+        device_external_ref: { type: string }
+        status: { $ref: '#/components/schemas/PairingStatus' }
+        device_id: { type: string, format: uuid, nullable: true }
+        detail: { type: object, additionalProperties: true, nullable: true }
+    DevicePairRequest:
+      type: object
+      required: [pairing_id, name]
+      properties:
+        pairing_id: { type: string, format: uuid }
+        name: { type: string, minLength: 1 }
+        category_id: { type: string, format: uuid, nullable: true }
+    OnboardingStatus:
+      type: object
+      required: [installation_id, steps, completed]
+      properties:
+        installation_id: { type: string, format: uuid }
+        completed: { type: boolean }
+        current_step: { type: string, enum: [kit, devices, profile, bill, done] }
+        steps:
+          type: object
+          properties:
+            kit_claimed: { type: boolean }
+            devices_paired: { type: integer, minimum: 0 }
+            profile_complete: { type: boolean }
+            bill_uploaded: { type: boolean }
+
+    # ---------------- device ----------------
+    DeviceCapabilities:
+      type: object
+      properties:
+        meter: { type: boolean, default: false }
+        switch: { type: boolean, default: false }
+      additionalProperties: true
+    Device:
+      type: object
+      required: [id, kit_id, installation_id, name, external_ref, capabilities, state]
+      properties:
+        id: { type: string, format: uuid }
+        kit_id: { type: string, format: uuid }
+        installation_id: { type: string, format: uuid }
+        category_id: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        external_ref: { type: string }
+        capabilities: { $ref: '#/components/schemas/DeviceCapabilities' }
+        state: { $ref: '#/components/schemas/DeviceState' }
+        last_seen_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    DeviceCreate:
+      type: object
+      required: [kit_id, name, external_ref]
+      properties:
+        kit_id: { type: string, format: uuid }
+        name: { type: string, minLength: 1 }
+        external_ref: { type: string, minLength: 1 }
+        category_id: { type: string, format: uuid, nullable: true }
+        capabilities: { $ref: '#/components/schemas/DeviceCapabilities' }
+    DeviceUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1 }
+        category_id: { type: string, format: uuid, nullable: true }
+
+    # ---------------- telemetry ----------------
+    TelemetryIngestRequest:
+      type: object
+      required: [device_external_ref, source_timestamp, event_hash]
+      properties:
+        kit_qr_code: { type: string, description: Identifica el kit emisor (alternativo a kit_id). }
+        kit_id: { type: string, format: uuid, nullable: true }
+        device_external_ref: { type: string, description: external_ref del device dentro del kit. }
+        source_timestamp:
+          type: string
+          format: date-time
+          description: Timestamp de origen (ISO8601 UTC). No excesivamente futuro.
+        event_hash:
+          type: string
+          description: Hash idempotente único del evento.
+        voltage_v: { type: number, minimum: 0, nullable: true }
+        current_a: { type: number, minimum: 0, nullable: true }
+        active_power_w: { type: number, minimum: 0, nullable: true }
+        reactive_power_var: { type: number, nullable: true }
+        apparent_power_va: { type: number, minimum: 0, nullable: true }
+        power_factor: { type: number, minimum: -1, maximum: 1, nullable: true }
+        energy_wh_delta: { type: number, minimum: 0, nullable: true }
+        frequency_hz: { type: number, nullable: true }
+        signal_quality: { type: integer, nullable: true }
+        firmware_version: { type: string, nullable: true }
+        raw_payload: { type: object, additionalProperties: true, nullable: true }
+    TelemetryIngestResult:
+      type: object
+      required: [ingestion_status, event_hash]
+      properties:
+        ingestion_status: { $ref: '#/components/schemas/IngestionStatus' }
+        reading_id: { type: string, format: uuid, nullable: true }
+        event_hash: { type: string }
+        duplicate: { type: boolean, description: true si event_hash ya existía (idempotencia). }
+    TelemetryReading:
+      type: object
+      required: [reading_id, device_id, installation_id, source_timestamp, received_timestamp, ingestion_status, event_hash]
+      properties:
+        reading_id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
+        kit_id: { type: string, format: uuid }
+        installation_id: { type: string, format: uuid }
+        source_timestamp: { type: string, format: date-time }
+        received_timestamp: { type: string, format: date-time }
+        voltage_v: { type: number, nullable: true }
+        current_a: { type: number, nullable: true }
+        active_power_w: { type: number, nullable: true }
+        reactive_power_var: { type: number, nullable: true }
+        apparent_power_va: { type: number, nullable: true }
+        power_factor: { type: number, nullable: true }
+        energy_wh_delta: { type: number, nullable: true }
+        frequency_hz: { type: number, nullable: true }
+        signal_quality: { type: integer, nullable: true }
+        ingestion_status: { $ref: '#/components/schemas/IngestionStatus' }
+        event_hash: { type: string }
+
+    # ---------------- dashboard ----------------
+    Dashboard:
+      type: object
+      required: [installation_id, live_power_w, energy_today_kwh, kit_status, open_alerts]
+      properties:
+        installation_id: { type: string, format: uuid }
+        live_power_w: { type: number, nullable: true, description: Potencia activa agregada en vivo (W). Null si sin datos. }
+        energy_today_kwh: { type: number, minimum: 0, description: kWh acumulado del día. }
+        cost_today_clp: { type: integer, nullable: true, description: CLP estimado del día; null si falta tarifa. }
+        tariff_configured: { type: boolean, description: false ⇒ frontend muestra "configura tarifa". }
+        comparison:
+          type: object
+          nullable: true
+          description: Variación vs periodo anterior; null si no hay base.
+          properties:
+            delta_kwh: { type: number }
+            delta_pct: { type: number }
+        kit_status:
+          type: object
+          properties:
+            devices_online: { type: integer, minimum: 0 }
+            devices_total: { type: integer, minimum: 0 }
+            has_live_data: { type: boolean }
+        open_alerts: { type: integer, minimum: 0 }
+
+    # ---------------- reports ----------------
+    ReportPoint:
+      type: object
+      required: [bucket_start, energy_kwh]
+      properties:
+        bucket_start: { type: string, format: date-time }
+        energy_kwh: { type: number, minimum: 0 }
+        cost_clp: { type: integer, nullable: true }
+        peak_power_w: { type: number, nullable: true }
+    Report:
+      type: object
+      required: [installation_id, granularity, series]
+      properties:
+        installation_id: { type: string, format: uuid }
+        granularity: { $ref: '#/components/schemas/AggregateGranularity' }
+        from: { type: string, format: date-time, nullable: true }
+        to: { type: string, format: date-time, nullable: true }
+        currency: { type: string, enum: [CLP], default: CLP }
+        tariff_configured: { type: boolean }
+        series:
+          type: array
+          items: { $ref: '#/components/schemas/ReportPoint' }
+        total_energy_kwh: { type: number, minimum: 0 }
+        total_cost_clp: { type: integer, nullable: true }
+
+    # ---------------- breakdown ----------------
+    BreakdownItem:
+      type: object
+      required: [label, energy_kwh, share_pct]
+      properties:
+        device_id: { type: string, format: uuid, nullable: true }
+        category_id: { type: string, format: uuid, nullable: true }
+        label: { type: string }
+        energy_kwh: { type: number, minimum: 0 }
+        cost_clp: { type: integer, nullable: true }
+        share_pct: { type: number, minimum: 0, maximum: 100 }
+    Breakdown:
+      type: object
+      required: [installation_id, group_by, items, total_energy_kwh]
+      properties:
+        installation_id: { type: string, format: uuid }
+        group_by: { type: string, enum: [device, category] }
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        items:
+          type: array
+          description: Ordenados de mayor a menor consumo (ranking). FR-BRK-004.
+          items: { $ref: '#/components/schemas/BreakdownItem' }
+        total_energy_kwh: { type: number, minimum: 0 }
+        total_cost_clp: { type: integer, nullable: true }
+
+    # ---------------- bills ----------------
+    ElectricityBill:
+      type: object
+      required: [id, installation_id, period_start, period_end, consumption_kwh, total_clp, file_url, status]
+      properties:
+        id: { type: string, format: uuid }
+        installation_id: { type: string, format: uuid }
+        distributor_id: { type: string, format: uuid, nullable: true }
+        tariff_id: { type: string, format: uuid, nullable: true }
+        client_number: { type: string, nullable: true }
+        period_start: { type: string, format: date }
+        period_end: { type: string, format: date }
+        consumption_kwh: { type: number, minimum: 0 }
+        total_clp: { type: integer, minimum: 0 }
+        fixed_charge_clp: { type: integer, nullable: true }
+        variable_charge_clp: { type: integer, nullable: true }
+        due_date: { type: string, format: date, nullable: true }
+        file_url: { type: string }
+        status: { $ref: '#/components/schemas/BillStatus' }
+        raw_extraction: { type: object, additionalProperties: true, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    BillCreate:
+      type: object
+      required: [period_start, period_end, consumption_kwh, total_clp, file_url]
+      properties:
+        distributor_id: { type: string, format: uuid, nullable: true }
+        tariff_id: { type: string, format: uuid, nullable: true }
+        client_number: { type: string, nullable: true }
+        period_start: { type: string, format: date }
+        period_end: { type: string, format: date }
+        consumption_kwh: { type: number, minimum: 0 }
+        total_clp: { type: integer, minimum: 0 }
+        fixed_charge_clp: { type: integer, minimum: 0, nullable: true }
+        variable_charge_clp: { type: integer, minimum: 0, nullable: true }
+        due_date: { type: string, format: date, nullable: true }
+        file_url: { type: string, description: Referencia segura al archivo cargado. }
+        status: { allOf: [ { $ref: '#/components/schemas/BillStatus' } ], default: uploaded }
+
+    # ---------------- alerts ----------------
+    Alert:
+      type: object
+      required: [id, installation_id, type, severity, status, message, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        installation_id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid, nullable: true }
+        type: { $ref: '#/components/schemas/AlertType' }
+        severity: { $ref: '#/components/schemas/AlertSeverity' }
+        status: { $ref: '#/components/schemas/AlertStatus' }
+        message: { type: string }
+        context: { type: object, additionalProperties: true, nullable: true }
+        estimated_impact_clp: { type: integer, nullable: true }
+        reviewed_by: { type: string, format: uuid, nullable: true }
+        reviewed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    AlertReviewRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [reviewed, dismissed] }
+
+    # ---------------- recommendations ----------------
+    Recommendation:
+      type: object
+      required: [id, installation_id, source, title, description, priority, status]
+      properties:
+        id: { type: string, format: uuid }
+        installation_id: { type: string, format: uuid }
+        alert_id: { type: string, format: uuid, nullable: true }
+        source: { $ref: '#/components/schemas/RecommendationSource' }
+        title: { type: string }
+        description: { type: string }
+        estimated_saving_clp: { type: integer, nullable: true }
+        priority: { type: integer }
+        status: { $ref: '#/components/schemas/RecommendationStatus' }
+        created_at: { type: string, format: date-time }
+
+    # ---------------- control ----------------
+    ControlAction:
+      type: object
+      required: [id, device_id, type, status, requested_at]
+      properties:
+        id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        type: { $ref: '#/components/schemas/ControlActionType' }
+        status: { $ref: '#/components/schemas/ControlActionStatus' }
+        payload: { type: object, additionalProperties: true, nullable: true }
+        result: { type: object, additionalProperties: true, nullable: true }
+        requested_at: { type: string, format: date-time }
+        resolved_at: { type: string, format: date-time, nullable: true }
+    ControlActionCreate:
+      type: object
+      required: [type]
+      properties:
+        type: { $ref: '#/components/schemas/ControlActionType' }
+        payload:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: Para set_limit incluye p. ej. { limit_power_w } o { limit_kwh }.
+    ControlSchedule:
+      type: object
+      required: [id, device_id, action, rule, enabled]
+      properties:
+        id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
+        action: { type: string, enum: [turn_on, turn_off] }
+        rule: { type: object, additionalProperties: true, description: Horarios/días (jsonb). }
+        enabled: { type: boolean, default: true }
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+    ControlScheduleCreate:
+      type: object
+      required: [action, rule]
+      properties:
+        action: { type: string, enum: [turn_on, turn_off] }
+        rule: { type: object, additionalProperties: true }
+        enabled: { type: boolean, default: true }
+    ConsumptionLimit:
+      type: object
+      required: [id, device_id, window, action_on_exceed, enabled]
+      properties:
+        id: { type: string, format: uuid }
+        device_id: { type: string, format: uuid }
+        limit_kwh: { type: number, exclusiveMinimum: 0, nullable: true }
+        limit_power_w: { type: number, exclusiveMinimum: 0, nullable: true }
+        window: { $ref: '#/components/schemas/LimitWindow' }
+        pre_alert_pct: { type: integer, minimum: 1, maximum: 100, nullable: true }
+        action_on_exceed: { $ref: '#/components/schemas/ActionOnExceed' }
+        enabled: { type: boolean, default: true }
+        created_at: { type: string, format: date-time }
+    ConsumptionLimitCreate:
+      type: object
+      required: [window]
+      description: Debe especificar al menos uno de limit_kwh o limit_power_w.
+      anyOf:
+        - required: [limit_kwh]
+        - required: [limit_power_w]
+      properties:
+        limit_kwh: { type: number, exclusiveMinimum: 0, nullable: true }
+        limit_power_w: { type: number, exclusiveMinimum: 0, nullable: true }
+        window: { $ref: '#/components/schemas/LimitWindow' }
+        pre_alert_pct: { type: integer, minimum: 1, maximum: 100, nullable: true }
+        action_on_exceed: { allOf: [ { $ref: '#/components/schemas/ActionOnExceed' } ], default: alert }
+    ControlState:
+      type: object
+      required: [device_id, state]
+      properties:
+        device_id: { type: string, format: uuid }
+        state: { type: string, enum: [on, off, unknown] }
+        last_action: { allOf: [ { $ref: '#/components/schemas/ControlAction' } ], nullable: true }
+        switchable: { type: boolean, description: capabilities.switch del device. }
