@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { TrendingDown, TrendingUp, BarChart3 } from 'lucide-react'
 import { formatCLP, formatDelta, formatKwh } from '@/lib/format'
-import { consumoHoy } from '@/lib/mock-data'
+import { consumoHoy } from '@/lib/fixtures/mock-data'
 import { Badge } from '@/components/ui/badge'
 
 const TECHO_CLP_LIVE = 1450

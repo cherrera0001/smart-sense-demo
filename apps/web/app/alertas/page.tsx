@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { LayoutShell } from '@/components/layout/LayoutShell'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogClose } from '@/components/ui/dialog'
-import { alertas as mockAlertas } from '@/lib/mock-data'
+import { alertas as mockAlertas } from '@/lib/fixtures/mock-data'
 import { formatCLP } from '@/lib/format'
 import { AlertTriangle, Lightbulb, AlertCircle, Check, Eye } from 'lucide-react'
 

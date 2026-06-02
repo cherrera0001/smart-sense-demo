@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import { LayoutShell } from '@/components/layout/LayoutShell'
 import { Badge } from '@/components/ui/badge'
-import { enchufes as mockEnchufes, tarifa } from '@/lib/mock-data'
+import { enchufes as mockEnchufes, tarifa } from '@/lib/fixtures/mock-data'
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react'
 
 const ThemeToggle = dynamic(() => import('@/components/theme/ThemeToggle').then(mod => ({default: mod.ThemeToggle})), {

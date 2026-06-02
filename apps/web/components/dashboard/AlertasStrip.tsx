@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Dialog } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { alertas } from '@/lib/mock-data'
+import { alertas } from '@/lib/fixtures/mock-data'
 import { formatCLP } from '@/lib/format'
 import { AlertCircle, Lightbulb, AlertTriangle, ChevronRight, Zap, Eye, EyeOff } from 'lucide-react'
 

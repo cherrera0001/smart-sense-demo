@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { LayoutShell } from '@/components/layout/LayoutShell'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { firmaElectrica } from '@/lib/mock-data'
+import { firmaElectrica } from '@/lib/fixtures/mock-data'
 import { formatCLP } from '@/lib/format'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { usePeriodo, type Periodo } from '@/lib/hooks/usePeriodo'

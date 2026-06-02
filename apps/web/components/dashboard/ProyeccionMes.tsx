@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { consumoHoy } from '@/lib/mock-data'
+import { consumoHoy } from '@/lib/fixtures/mock-data'
 import { useTheme } from '@/lib/context/ThemeContext'
 
 export function ProyeccionMes() {

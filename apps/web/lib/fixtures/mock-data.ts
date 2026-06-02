@@ -1,4 +1,10 @@
-import type { Tarifa, ConsumoHoy, FirmaElectrica, Alerta, ReporteSemanal, Enchufe } from './types'
+/**
+ * ⚠️ DEMO-ONLY FIXTURES — datos simulados deterministas alineados al deck.
+ * NO son datos reales. Solo se consumen bajo DEMO_MODE (`@/lib/config/demo-mode`).
+ * No mezclar con lógica productiva. El seed productivo equivalente vive en
+ * packages/db/prisma/seed.ts (marcado is_demo=true). Ver docs/audit/mock-data-inventory.md.
+ */
+import type { Tarifa, ConsumoHoy, FirmaElectrica, Alerta, ReporteSemanal, Enchufe } from '../types'
 
 export const tarifa: Tarifa = {
   tipo: 'BT-1',
