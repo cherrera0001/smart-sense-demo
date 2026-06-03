@@ -77,8 +77,8 @@ pnpm db:seed
 pnpm test:db
 ```
 
-## Actualización Fase 1.1 (2026-06-02) — Runtime verification
-Se intentó cerrar el gate de runtime (migración/seed/tests contra Postgres+TimescaleDB real). Se añadió `docker-compose.yml` + `.env.example`, se revisó el drift schema↔migración (sin drift), pero **el engine de Docker Desktop no inicializó** (backend WSL2 sin el distro `docker-desktop`; HTTP 500 persistente ~8 min). `db:migrate`/`db:seed`/`test:db` **no se ejecutaron contra DB real**. Detalle y remediación en `docs/audit/phase-1-runtime-verification.md`. **Estado sigue PARTIAL.** El trabajo estructural quedó commiteado.
+## Actualización Fase 1.1 (2026-06-02) — Runtime verification → BLOCKED
+Se intentó cerrar el gate de runtime en dos iteraciones, incluyendo un **reinicio limpio** de Docker Desktop (`wsl --shutdown` + relanzar). En ambas, **el engine de Docker no inicializó** (backend WSL2 sin el distro `docker-desktop`; HTTP 500 persistente; `docker run hello-world` falla). No hay Postgres nativo como fallback y la política prohíbe instalar software. `db:migrate`/`db:seed`/`test:db` **no se ejecutaron contra DB real**. **Estado: BLOCKED (entorno), no PASS.** Bloqueo formal y remediación manual en `docs/audit/phase-1-runtime-blocker.md`. El trabajo estructural quedó commiteado; el gate se cierra cuando haya Docker/Postgres operativo.
 
 ## Siguiente fase recomendada
 **Fase 2 — API base** (Auth, Organizations, Installations, Devices, Onboarding) sobre Fastify, **solo tras** verificar migración/seed/tests con Docker (Fase 1.1 cerrada en PASS).

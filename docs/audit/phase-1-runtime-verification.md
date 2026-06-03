@@ -56,5 +56,8 @@ pnpm build:web && pnpm build:api
 | `pnpm build:api` | ✅ |
 | `pnpm test:db` | ⏳ skip (sin Docker) → debe correr real tras remediación |
 
+## Reintento de reparación (2026-06-02, 2ª iteración)
+Se ejecutó un **reinicio limpio**: `Stop-Process` de Docker Desktop + `wsl --shutdown` + relanzar Docker Desktop + poll del daemon. **Resultado idéntico: HTTP 500 persistente**; `docker run --rm hello-world` → 500; el distro WSL `docker-desktop` **sigue sin aparecer**. Por política ("no reinicios infinitos"), se detiene el intento automático y se formaliza el bloqueo en **`docs/audit/phase-1-runtime-blocker.md`**. No hay Postgres nativo como fallback y no se instala software.
+
 ## Veredicto Fase 1.1
-**PARTIAL / BLOQUEADA** en el gate de runtime de DB por el engine de Docker local. Todo lo verificable sin DB está en verde y el código quedó **commiteado** (ver historial). Fase 2 permanece **BLOQUEADA** hasta que `db:migrate` + `db:seed` + `test:db` pasen contra Postgres real.
+**BLOCKED (entorno)** en el gate de runtime de DB por el engine de Docker local que no inicializa (backend WSL2 sin provisionar). Todo lo verificable sin DB está en verde y el código quedó **commiteado**. Fase 2 permanece **BLOQUEADA** hasta que `db:migrate` + `db:seed` + `test:db` pasen contra Postgres real. Remediación manual: ver `phase-1-runtime-blocker.md`.
