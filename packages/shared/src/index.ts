@@ -19,5 +19,8 @@ export * from './schemas/billing.js';
 export * from './schemas/alerts.js';
 export * from './schemas/control.js';
 
+// Telemetry (node:crypto — solo backend: apps/api, apps/iot-bridge; apps/web no importa shared)
+export * from './telemetry/hash.js';
+
 // Utils
 export * from './utils/format.js';

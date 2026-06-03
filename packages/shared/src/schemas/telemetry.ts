@@ -53,3 +53,52 @@ export const telemetryIngestionResponse = z.object({
 export type TelemetryIngestionResponse = z.infer<
   typeof telemetryIngestionResponse
 >;
+
+/**
+ * Body de POST /iot/telemetry (Fase 3). El emisor envía los UUID de resolución
+ * (device/kit/installation); `event_hash` y `reading_id` son opcionales (la API los
+ * calcula/genera si faltan). Métricas opcionales con las mismas validaciones del canon.
+ */
+export const telemetryIngestSchema = z.object({
+  device_id: uuid,
+  kit_id: uuid,
+  installation_id: uuid,
+  source_timestamp: isoTimestamp,
+  voltage_v: z.number().nonnegative().nullable().optional(),
+  current_a: z.number().nonnegative().nullable().optional(),
+  active_power_w: z.number().nonnegative().nullable().optional(),
+  reactive_power_var: z.number().nullable().optional(),
+  apparent_power_va: z.number().nonnegative().nullable().optional(),
+  power_factor: z.number().min(-1).max(1).nullable().optional(),
+  energy_wh_delta: z.number().nonnegative().nullable().optional(),
+  frequency_hz: z.number().nonnegative().nullable().optional(),
+  signal_quality: z.number().int().nullable().optional(),
+  firmware_version: z.string().nullable().optional(),
+  raw_payload: z.unknown().nullable().optional(),
+  reading_id: uuid.optional(),
+  event_hash: z.string().min(1).optional(),
+});
+export type TelemetryIngest = z.infer<typeof telemetryIngestSchema>;
+
+/** Resultado de ingesta expuesto por la API (Fase 3). */
+export const telemetryIngestResult = z.object({
+  reading_id: uuid,
+  status: z.enum(['accepted', 'duplicate']),
+  event_hash: z.string(),
+  received_timestamp: isoTimestamp,
+});
+export type TelemetryIngestResult = z.infer<typeof telemetryIngestResult>;
+
+/** Query de GET /installations/{id}/telemetry/range. from<=to; limit acotado. */
+export const telemetryRangeQuerySchema = z
+  .object({
+    from: isoTimestamp,
+    to: isoTimestamp,
+    device_id: uuid.optional(),
+    limit: z.coerce.number().int().min(1).max(5000).default(500),
+  })
+  .refine((q) => new Date(q.from).getTime() <= new Date(q.to).getTime(), {
+    message: 'from debe ser <= to',
+    path: ['from'],
+  });
+export type TelemetryRangeQuery = z.infer<typeof telemetryRangeQuerySchema>;
