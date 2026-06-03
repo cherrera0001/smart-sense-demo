@@ -94,5 +94,8 @@ export SMARTSENSE_DB_TEST_MODE="external"
 pnpm verify:phase1:external
 ```
 
+## Actualización Fase 1.3 (2026-06-02) — Vercel + Neon → READY-BLOCKED
+Se linkeó el proyecto Vercel `cherrera0001s-projects/smart-sense-demo` (CLI autenticado) y se validó el pipeline `vercel env pull`. Pero el proyecto **no tiene `DATABASE_URL`** (`vercel env ls` → "No Environment Variables found"): **la integración Neon Postgres del Marketplace aún no fue creada**. Crear esa integración es un flujo interactivo de Marketplace+OAuth (acción del usuario). Sin `DATABASE_URL` no corren migrate/seed/tests. **Estado: READY-BLOCKED.** Detalle y pasos exactos en `docs/audit/phase-1-vercel-neon-runtime-verification.md`. Fase 2 sigue BLOQUEADA.
+
 ## Siguiente fase recomendada
-**Fase 2 — API base** (Auth, Organizations, Installations, Devices, Onboarding) sobre Fastify, **solo tras** verificar migración/seed/tests contra Postgres real (Docker o externa, Fase 1 cerrada en PASS). **Fase 2 sigue BLOQUEADA** hasta entonces (GATE-SDD-001).
+**Fase 2 — API base** (Auth, Organizations, Installations, Devices, Onboarding) sobre Fastify, **solo tras** verificar migración/seed/tests contra Postgres real (Docker o externa/Neon, Fase 1 cerrada en PASS). **Fase 2 sigue BLOQUEADA** hasta entonces (GATE-SDD-001).

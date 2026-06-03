@@ -53,3 +53,7 @@ Thumbs.db
 apps/web/public/sw.js*
 apps/web/public/workbox-*.js
 apps/web/public/fallback-*.js
+
+# Vercel env pull (local, nunca commitear)
+.env.vercel.local
+.env*.local
