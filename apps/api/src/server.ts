@@ -1,21 +1,9 @@
-import Fastify from 'fastify';
-import { config } from './config.js';
-import { healthPlugin } from './health.js';
+import { buildApp } from './app.js';
+import { config } from './config/env.js';
 
-/**
- * Bootstrap del servidor Fastify.
- * Fase 1: solo health. Endpoints de negocio = Fase 2.
- */
-async function buildServer() {
-  const app = Fastify({ logger: true });
-
-  await app.register(healthPlugin);
-
-  return app;
-}
-
+/** Bootstrap del servidor Fastify (Fase 2: API base auth/orgs/installations/devices/onboarding). */
 async function start(): Promise<void> {
-  const app = await buildServer();
+  const app = await buildApp({ logger: true });
 
   const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
     app.log.info({ signal }, 'shutting down');
