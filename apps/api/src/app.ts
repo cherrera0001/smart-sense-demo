@@ -9,6 +9,7 @@ import { organizationsRoutes } from './modules/organizations/organizations.route
 import { installationsRoutes } from './modules/installations/installations.routes.js';
 import { devicesRoutes } from './modules/devices/devices.routes.js';
 import { onboardingRoutes } from './modules/onboarding/onboarding.routes.js';
+import { telemetryRoutes } from './modules/telemetry/telemetry.routes.js';
 
 export interface BuildAppOptions {
   logger?: boolean;
@@ -34,6 +35,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(installationsRoutes);
   await app.register(devicesRoutes);
   await app.register(onboardingRoutes);
+  await app.register(telemetryRoutes);
 
   return app;
 }
