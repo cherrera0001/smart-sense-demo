@@ -9,17 +9,25 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import { startTestDb, stopTestDb, hasDocker, type TestDb } from './setup.js';
+import {
+  startTestDb,
+  stopTestDb,
+  testDbAvailable,
+  resolveTestDbMode,
+  BLOCKED_MESSAGE,
+  type TestDb,
+} from './setup.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dockerAvailable = hasDocker();
-const suite = dockerAvailable ? describe : describe.skip;
+const dbAvailable = testDbAvailable();
+const suite = dbAvailable ? describe : describe.skip;
 
-if (!dockerAvailable) {
+if (!dbAvailable) {
   // eslint-disable-next-line no-console
-  console.warn(
-    '[constraints.test] Docker no disponible — tests skippeados. Requieren Docker + imagen timescale/timescaledb:latest-pg16 (fallback postgres:16).',
-  );
+  console.warn(`[constraints.test] ${BLOCKED_MESSAGE}`);
+} else {
+  // eslint-disable-next-line no-console
+  console.info(`[constraints.test] modo DB: ${resolveTestDbMode()}`);
 }
 
 suite('CHECK constraints, idempotencia y seed', () => {
