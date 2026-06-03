@@ -4,7 +4,7 @@
  * Requieren Docker (Testcontainers). Si Docker no está disponible se skippean con un mensaje
  * claro; el archivo COMPILA igualmente (typecheck) en cualquier entorno.
  */
-import { execFileSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -186,12 +186,12 @@ suite('CHECK constraints, idempotencia y seed', () => {
 
   it('el seed corre sin error sobre la base migrada', () => {
     const seedPath = join(__dirname, '..', 'prisma', 'seed.ts');
-    // Ejecuta el seed con tsx contra la DB efímera; idempotente y sin errores.
-    const output = execFileSync(
-      process.platform === 'win32' ? 'npx.cmd' : 'npx',
-      ['tsx', seedPath],
-      { env: { ...process.env, DATABASE_URL: db.url }, encoding: 'utf8' },
-    );
+    // Ejecuta el seed con tsx contra la DB de test; idempotente y sin errores.
+    // execSync usa shell (resuelve npx.cmd en Windows; execFileSync da EINVAL con .cmd).
+    const output = execSync(`npx tsx "${seedPath}"`, {
+      env: { ...process.env, DATABASE_URL: db.url },
+      encoding: 'utf8',
+    });
     expect(output).toContain('Seed completado');
   }, 120_000);
 });

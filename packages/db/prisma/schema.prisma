@@ -18,8 +18,11 @@
 //  - El trigger append-only de audit_logs y el trigger genérico set_updated_at se aplican en SQL.
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon: conexión directa (no-pooler) para migraciones. Si DIRECT_URL no se define,
+  // Prisma usa `url`. Ver docs/database/phase-1-external-postgres-verification.md.
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {

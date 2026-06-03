@@ -118,8 +118,10 @@ CREATE TABLE "distributors" (
   "country" text NOT NULL DEFAULT 'CL',
   "code"    text
 );
+-- UNIQUE completo (no parcial): `code` es la clave natural usada por upsert (ON CONFLICT).
+-- Postgres permite múltiples NULL en un UNIQUE no parcial, así que respeta `code` nullable.
 CREATE UNIQUE INDEX "distributors_code_key"
-  ON "distributors" ("code") WHERE "code" IS NOT NULL;
+  ON "distributors" ("code");
 
 -- tariffs -----------------------------------------------------------------------------
 CREATE TABLE "tariffs" (
