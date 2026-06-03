@@ -58,7 +58,7 @@ Esqueletos mínimos. API: `GET /health → {status:"ok",service:"smartsense-api"
 - Tests: `packages/db/tests/{setup,integrity,constraints}.test.ts`.
 
 ## Riesgos abiertos
-1. **Migración SQL no ejecutada contra Postgres real** (entorno sin Docker) — verificar `db:migrate` + `db:seed` + `test:db` con Docker antes de Fase 2. **Gate de cierre real.**
+1. ✅ **RESUELTO (Fase 1.4, 2026-06-02).** La migración SQL **ya se ejecutó contra Postgres real** (Neon vía Vercel): `db:migrate:deploy` + `db:seed` + `test:db:external` (18/18) en verde, 21/21 tablas verificadas. Gate de cierre real **superado**. Ver `## Cierre Fase 1.4 — PASS`.
 2. La idempotencia compuesta de telemetría asume `event_hash` globalmente único; validar en pruebas con Docker.
 3. Warning `react-hooks/exhaustive-deps` preexistente en la demo (deuda, no bloqueante).
 4. `next lint` deprecado en Next 16 (migrar a ESLint CLI).
@@ -97,5 +97,18 @@ pnpm verify:phase1:external
 ## Actualización Fase 1.3 (2026-06-02) — Vercel + Neon → READY-BLOCKED
 Se linkeó el proyecto Vercel `cherrera0001s-projects/smart-sense-demo` (CLI autenticado) y se validó el pipeline `vercel env pull`. Pero el proyecto **no tiene `DATABASE_URL`** (`vercel env ls` → "No Environment Variables found"): **la integración Neon Postgres del Marketplace aún no fue creada**. Crear esa integración es un flujo interactivo de Marketplace+OAuth (acción del usuario). Sin `DATABASE_URL` no corren migrate/seed/tests. **Estado: READY-BLOCKED.** Detalle y pasos exactos en `docs/audit/phase-1-vercel-neon-runtime-verification.md`. Fase 2 sigue BLOQUEADA.
 
+## Cierre Fase 1.4 — PASS (2026-06-02)
+Se cerró el gate de runtime de Fase 1 contra **PostgreSQL real**: **Neon Postgres (dev) vía Vercel**, proyecto `cherrera0001s-projects/smart-sense-demo`, entorno Development, database `neondb` (host enmascarado `ep-lucky-pine-***.neon.tech`). Neon **no tiene TimescaleDB** → `create_hypertable` cayó al fallback `DO/EXCEPTION` (`telemetry_readings` como tabla normal). Se usó la URL **directa/unpooled** en `DATABASE_URL`/`DIRECT_URL`; guard resuelto con `SMARTSENSE_DB_ALLOW_UNSAFE=1` (autorizado, DB de desarrollo).
+
+**Gate verde:** `pnpm verify:phase1:external` → **GATE_EXIT=0**. `db:generate` (Prisma 5.22.0) → `db:migrate:deploy` ("All migrations…applied"; status "up to date") → `db:seed` OK → `test:db:external` **18/18 PASS** → typecheck (5 paquetes) → lint (1 warning preexistente `Step2PairingLeds.tsx:35`) → `build:web` (12 rutas) → `build:api`. **21/21 tablas de dominio** verificadas en la DB real.
+
+**Dos fixes aplicados:**
+1. **`distributors.code` (bug de DB):** el índice único era **parcial** (`WHERE code IS NOT NULL`) → `42P10` en el `ON CONFLICT(code)` del upsert del seed. Fix: índice único **completo** sobre `code` (alineado al relational-model). `prisma migrate reset --force` + re-aplicar → seed OK.
+2. **`constraints.test.ts` (bug de test, no de DB):** `execFileSync('npx.cmd', …)` → `spawnSync npx.cmd EINVAL` en Windows. Fix: `execSync('npx tsx "<path>"')` (usa shell).
+
+Evidencia: `docs/audit/phase-1-mer-db-integration-precheck.md`, `phase-1-real-db-schema-verification.md`, `phase-1-vercel-neon-seed-verification.md`, `phase-1-vercel-neon-runtime-verification.md §Cierre Fase 1.4`.
+
+**Veredicto: Fase 1 PASS. Fase 2 AUTORIZABLE** (GATE-SDD-001 satisfecho).
+
 ## Siguiente fase recomendada
-**Fase 2 — API base** (Auth, Organizations, Installations, Devices, Onboarding) sobre Fastify, **solo tras** verificar migración/seed/tests contra Postgres real (Docker o externa/Neon, Fase 1 cerrada en PASS). **Fase 2 sigue BLOQUEADA** hasta entonces (GATE-SDD-001).
+**Fase 2 — API base** (Auth, Organizations, Installations, Devices, Onboarding) sobre Fastify. Fase 1 quedó **cerrada en PASS** contra Postgres real (Neon) → **Fase 2 AUTORIZABLE** (GATE-SDD-001 satisfecho).

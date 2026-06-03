@@ -117,19 +117,23 @@
 
 ---
 
-## Tabla-resumen — Estado ACTUAL de los gates (Fase 1.2, 2026-06-02)
+## Tabla-resumen — Estado ACTUAL de los gates (Fase 1.4, 2026-06-02 · Neon real)
+
+> Cerrados contra **Neon Postgres (dev) vía Vercel** (`cherrera0001s-projects/smart-sense-demo`, Development, `neondb`, host enmascarado `ep-lucky-pine-***.neon.tech`; sin TimescaleDB → fallback `DO/EXCEPTION`; URL directa/unpooled). `pnpm verify:phase1:external` → **GATE_EXIT=0**.
 
 | Gate | Comando | Estado actual | Motivo |
 |---|---|---|---|
-| GATE-DB-001 | `pnpm db:generate` | **PASS** | schema válido, client generado (verificado en Fase 1) |
-| GATE-DB-002 | `pnpm db:migrate[:deploy]` | **BLOCKED** | sin PostgreSQL accesible (Docker roto, sin DB externa, `DATABASE_URL` no definida) |
-| GATE-DB-003 | `pnpm db:seed` | **BLOCKED** | depende de GATE-DB-002 |
-| GATE-DB-004 | `pnpm test:db[:external]` | **BLOCKED** | modo `none`: sin Docker ni `DATABASE_URL` → `BLOCKED_MESSAGE` |
+| GATE-DB-001 | `pnpm db:generate` | **PASS** | Prisma Client v5.22.0 generado |
+| GATE-DB-002 | `pnpm db:migrate[:deploy]` | **PASS** | "All migrations…applied"; `migrate status` "up to date"; 21/21 tablas en Neon |
+| GATE-DB-003 | `pnpm db:seed` | **PASS** | seed OK contra Neon; conteos esperados; org demo `is_demo=true` |
+| GATE-DB-004 | `pnpm test:db[:external]` | **PASS** | `test:db:external` 18/18 verdes (modo external), sin skips |
 | GATE-WEB-001 | `pnpm build:web` | **PASS** | demo Next compila (12 rutas) |
 | GATE-API-001 | `pnpm build:api` | **PASS** | esqueleto Fastify compila |
-| GATE-TYPE-001 | `pnpm typecheck` | **PASS** | 0 errores |
-| GATE-LINT-001 | `pnpm lint` | **PASS** | 1 warning preexistente demo (documentado) |
-| GATE-SEC-001 | secret-scan / `git ls-files` | **PASS** | solo `.env.example` trackeado; `.env` ignorado |
-| GATE-SDD-001 | gobierno SDD | **ENFORCED** | Fase 2 bloqueada hasta GATE-DB-002..004 = PASS |
+| GATE-TYPE-001 | `pnpm typecheck` | **PASS** | 5 paquetes, 0 errores |
+| GATE-LINT-001 | `pnpm lint` | **PASS** | 1 warning preexistente demo (`Step2PairingLeds.tsx:35`, documentado) |
+| GATE-SEC-001 | secret-scan / `git ls-files` | **PASS** | solo `.env.example` trackeado; `.env`/`packages/db/.env`/`.env.vercel.local` ignorados |
+| GATE-SDD-001 | gobierno SDD | **PASS** | GATE-DB-002..004 en PASS → Fase 2 **AUTORIZABLE** |
 
-**Conclusión:** los gates que no dependen de DB están en **PASS**; los gates de DB (001 build aparte: 002/003/004) están en **BLOCKED** por falta de motor PostgreSQL. Estado de Fase 1.2 = **READY-BLOCKED**: un único comando (`pnpm verify:phase1:external` con `DATABASE_URL` de desarrollo) cierra los tres gates BLOCKED.
+**Conclusión:** **todos los gates de Fase 1 en PASS** contra Postgres real (Neon). Estado de Fase 1 = **PASS** (cerrada vía Fase 1.4). Fase 2 **AUTORIZABLE** (GATE-SDD-001 satisfecho). Evidencia: `docs/audit/phase-1-vercel-neon-runtime-verification.md §Cierre Fase 1.4`, `phase-1-real-db-schema-verification.md`, `phase-1-vercel-neon-seed-verification.md`.
+
+> Dos fixes durante el cierre 1.4: (1) `distributors.code` índice único **completo** (era parcial → `42P10` en `ON CONFLICT`); (2) `constraints.test.ts` usa `execSync('npx tsx …')` (antes `execFileSync('npx.cmd')` → `EINVAL` en Windows).

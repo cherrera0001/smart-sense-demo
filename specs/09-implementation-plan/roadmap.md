@@ -54,7 +54,9 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 
 > **Precondición:** FASE 0.5 cerrada con go/no-go aprobado.
 >
-> **Estado: ✅ Implementada (estructura) — ⏳ pendiente verificación de migración/seed/tests contra Postgres con Docker.**
+> **Estado: ✅ PASS / cerrada (2026-06-02, vía Fase 1.4 contra Neon real).** Estructura implementada **y** verificada en runtime: `db:migrate:deploy` + `db:seed` + `test:db:external` (18/18) en verde contra Neon Postgres (Vercel, `neondb`), 21/21 tablas presentes, `verify:phase1:external` GATE_EXIT=0. Detalle en `docs/audit/phase-1-vercel-neon-runtime-verification.md §Cierre Fase 1.4` y subfase 1.4 abajo. **Fase 2 desbloqueada (AUTORIZABLE).**
+>
+> *(Histórico) El estado previo fue: ✅ Implementada (estructura) — ⏳ pendiente verificación de migración/seed/tests contra Postgres real.*
 > Implementado y versionado: monorepo pnpm (apps/web migrada con build verde, apps/api esqueleto `GET /health`, apps/iot-bridge scaffold sin MQTT), `packages/shared` (enums canónicos, branded ids, DTOs, schemas Zod, helpers de formato), `packages/db` (`schema.prisma` con 21 modelos + 24 enums; migración manual `0001_init/migration.sql` de 592 líneas con extensiones, CHECKs, `create_hypertable` en DO/EXCEPTION, índices, triggers `set_updated_at` y append-only; `seed.ts` idempotente con catálogo global + datos demo bajo `organizations.is_demo=true`; suite Vitest+Testcontainers con guard de Docker).
 > **Pendiente (requiere entorno con Docker/Postgres):** ejecutar `pnpm db:migrate`, `pnpm db:seed` y `pnpm test:db` y observar resultados reales. Guía operativa en `docs/database/phase-1-db-setup.md`.
 > **Desviaciones documentadas:** se añadió `organizations.is_demo boolean default false` (no estaba en `03-data-model/relational-model.md`) como marca de datos demo; el UNIQUE de idempotencia de telemetría es físicamente `(event_hash, source_timestamp)` por requisito de hypertable (Prisma declara `@unique` simple como intención lógica).
@@ -69,7 +71,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
   - Tests de integridad referencial y de no-negatividad (Vitest + Testcontainers).
 - **Dependencias:** FASE 0 (ADRs, modelo relacional).
 - **Criterio de cierre:** `prisma migrate deploy` desde cero + seeds OK en CI; suite `db` (constraints/unicidad/append-only/hypertable) verde; matriz de validación filas NFR-026/028/029/031/032/041 + INV-6/7/8 a `EN PROGRESO`.
-  - **Estado del criterio: parcialmente cumplido.** ✅ Estructura completa y versionada (schema, migración, seeds, tests escritos). ⏳ Ejecución contra DB **pendiente de entorno**: `migrate deploy` desde cero, seeds y suite `db` aún no corridos en un Postgres real (sin Docker en el entorno de validación → tests se saltan por guard). Las matrices se actualizarán a `EN PROGRESO` una vez verde la ejecución.
+  - **Estado del criterio: ✅ CUMPLIDO (2026-06-02, Fase 1.4 contra Neon real).** `prisma migrate deploy` desde cero + seeds OK + suite `db` (`test:db:external`) 18/18 verde contra Neon Postgres; 21/21 tablas verificadas; `verify:phase1:external` GATE_EXIT=0. Las matrices (`traceability-matrix.md`, `validation-matrix.md`) se marcan VERIFICADO/PASS para la cobertura runtime de Fase 1.
 - **FR cubiertos:** base estructural de todos; valida invariantes de canon (no-negatividad, idempotencia por `event_hash`, append-only audit). Habilita FR-ONB-005, FR-DASH-002, FR-CTRL-007.
 
 ## FASE 1.2 — External PostgreSQL Runtime Verification
@@ -77,7 +79,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 > **Precondición:** FASE 1 estructural ✅; FASE 1.1 (runtime con Docker) **BLOCKED** por engine de Docker local que no inicializa (ver `docs/audit/phase-1-runtime-blocker.md`).
 >
 > **Estados posibles de la subfase:** `PASS` (verificación contra Postgres real en verde) · `READY-BLOCKED` (repo listo, falta `DATABASE_URL`) · `FAIL` (DB accesible pero un gate falla con datos reales).
-> **Estado actual: READY-BLOCKED.**
+> **Estado actual: ✅ PASS** — destrabado y cerrado en **Fase 1.4** con Neon (Vercel). El soporte external (modo dual, guard, scripts, docs) de 1.2 fue la base; la ejecución real contra DB ocurrió en 1.4 (ver abajo).
 
 - **Objetivo:** destrabar el cierre runtime de Fase 1 sin depender de Docker local, ejecutando `db:migrate:deploy` + `db:seed` + `test:db` contra una **PostgreSQL externa de desarrollo**, bajo los mismos criterios PASS/FAIL/BLOCKED del flujo SDD.
 - **Entregables:**
@@ -88,10 +90,30 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
   - Docs: `docs/database/phase-1-external-postgres-verification.md`, `docs/audit/phase-1-external-runtime-precheck.md`; actualización de `phase-1-runtime-verification.md` y `phase-1-summary.md`.
 - **Dependencias:** FASE 1 (estructura) implementada.
 - **Criterio de cierre (→ PASS):** `pnpm verify:phase1:external` con `DATABASE_URL` de desarrollo termina en exit 0 (migración 21 tablas + 24 enums, seeds con conteos esperados, `test:db:external` verde, typecheck/lint/builds verdes). Recién entonces Fase 1 pasa a PASS, se actualizan las matrices y se desbloquea Fase 2 (GATE-SDD-001).
-- **Estado del criterio:** **READY-BLOCKED** — no hay `DATABASE_URL` externa en el entorno actual (ni Docker, ni Postgres nativo). GATE-DB-002/003/004 = BLOCKED; build/type/lint/sec = PASS. Un único comando cierra la subfase cuando exista la DB.
-- **FR cubiertos:** N/A (verificación runtime de la base estructural de Fase 1; cubre INV-6/8 y NFR-026/028/029/031/032/041 al pasar a PASS).
+- **Estado del criterio:** **✅ PASS (cerrado en Fase 1.4)** — la `DATABASE_URL` externa la proveyó la integración Neon de Vercel. GATE-DB-002/003/004 = PASS; build/type/lint/sec = PASS.
+- **FR cubiertos:** N/A (verificación runtime de la base estructural de Fase 1; cubre INV-6/8 y NFR-026/028/029/031/032/041, ahora VERIFICADO/PASS).
+
+## FASE 1.4 — MER ↔ DB real (Neon vía Vercel) → PASS
+
+> **Precondición:** FASE 1.2 (soporte external) ✅. Aporta la `DATABASE_URL` real que faltaba: integración **Neon Postgres** del proyecto Vercel `cherrera0001s-projects/smart-sense-demo` (entorno Development, database `neondb`).
+>
+> **Estado: ✅ PASS (2026-06-02).** Cierra el gate de runtime de Fase 1.
+
+- **Objetivo:** ejecutar el pipeline completo de runtime contra la PostgreSQL real de Neon y verificar que el MER (21 tablas) se materializa end-to-end.
+- **Entregables (docs):**
+  - `docs/audit/phase-1-mer-db-integration-precheck.md` — precheck del entorno (rama, Vercel linkeado/autenticado, integración Neon, secretos no trackeados, URL unpooled, guard).
+  - `docs/audit/phase-1-real-db-schema-verification.md` — 21/21 tablas en DB real + nota `_prisma_migrations` + conteos de seed.
+  - `docs/audit/phase-1-vercel-neon-seed-verification.md` — resultado real del seed (conteos, org `is_demo=true`, catálogo global).
+  - Actualización de `docs/audit/phase-1-vercel-neon-runtime-verification.md` (READY-BLOCKED → PASS, §Cierre Fase 1.4), `docs/implementation/phase-1-summary.md`, `specs/08-quality/{runtime-gates,traceability-matrix}.md`, `docs/database/phase-1-external-postgres-verification.md`.
+- **Hallazgos / fixes:** (1) `distributors.code` pasó de índice único **parcial** a **completo** (el parcial rompía `ON CONFLICT(code)` con `42P10`); (2) `constraints.test.ts` migró a `execSync('npx tsx …')` (el `execFileSync('npx.cmd')` daba `EINVAL` en Windows). Ambos en código (fuera del alcance de esta doc, ya aplicados).
+- **Notas de entorno:** Neon **sin TimescaleDB** → `create_hypertable` por fallback `DO/EXCEPTION` (`telemetry_readings` tabla normal); URL **directa/unpooled** en `DATABASE_URL`/`DIRECT_URL`; guard resuelto con `SMARTSENSE_DB_ALLOW_UNSAFE=1` (DB dev `neondb`, autorizado).
+- **Criterio de cierre (→ PASS):** ✅ `pnpm verify:phase1:external` GATE_EXIT=0 (migrate 21 tablas, seed con conteos, `test:db:external` 18/18, typecheck/lint/builds verdes). **Fase 1 cierra en PASS; Fase 2 AUTORIZABLE (GATE-SDD-001).**
+- **FR cubiertos:** N/A (cierre runtime de Fase 1; deja INV-6/8 y NFR-026/028/029/031/032/041 VERIFICADO/PASS).
 
 ## FASE 2 — API base (auth, organizations, installations, devices, onboarding)
+
+> **Estado: 🔓 DESBLOQUEADA / AUTORIZABLE (2026-06-02)** — Fase 1 cerró en PASS contra Neon real; GATE-SDD-001 satisfecho. No iniciada aún.
+
 
 - **Objetivo:** levantar la API Fastify con autenticación, RBAC multi-tenant y el flujo de onboarding hasta dispositivos.
 - **Entregables:**
@@ -179,9 +201,10 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 | Fase | Foco | Dependencias | FR principales |
 |---|---|---|---|
 | 0 | Ordenamiento / gobierno | — | trazabilidad de los 87 FR |
-| 1 | DB + dominio (21 tablas) | 0 | base estructural + invariantes |
-| 1.2 | External PostgreSQL runtime verification (READY-BLOCKED) | 1 | verificación runtime (GATE-DB-001..004) |
-| 2 | API base | 1 | AUTH, ONB, PROF, SET-002/003 |
+| 1 | DB + dominio (21 tablas) — **PASS / cerrada** | 0 | base estructural + invariantes |
+| 1.2 | External PostgreSQL runtime support (PASS vía 1.4) | 1 | soporte modo dual + guard + scripts |
+| 1.4 | MER ↔ DB real (Neon vía Vercel) — **PASS** | 1.2 | cierre runtime (GATE-DB-001..004) |
+| 2 | API base — **AUTORIZABLE** | 1 | AUTH, ONB, PROF, SET-002/003 |
 | 3 | IoT + telemetría | 1,2 | DASH-001/002, REP, ingesta |
 | 4 | Frontend dashboard/reportes | 2,3 | DASH, REP, onboarding/boleta UI |
 | 5 | Desglose, alertas, recomendaciones | 3,4 | BRK, ALRT, REC |

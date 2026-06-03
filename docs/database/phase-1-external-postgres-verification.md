@@ -118,3 +118,17 @@ La base es desechable — elimínala al terminar para no dejar datos ni credenci
 - **FAIL:** la DB está accesible pero un paso falla con datos reales (migración rechazada, violación de constraint inesperada, seed no idempotente, test rojo). → registrar el error real y corregir antes de declarar cierre.
 
 Registro de resultados: `docs/audit/phase-1-runtime-verification.md` (migración/tests/builds) y `docs/audit/phase-1-seed-verification.md` (seeds).
+
+---
+
+## Verificado con Neon (2026-06-02)
+
+Este flujo se ejecutó **end-to-end contra una PostgreSQL real**: **Neon Postgres (dev) vía Vercel**, proyecto `cherrera0001s-projects/smart-sense-demo`, entorno Development, database **`neondb`** (host enmascarado `ep-lucky-pine-***.neon.tech`). Resultado: **PASS** (`pnpm verify:phase1:external` GATE_EXIT=0; migración 21/21 tablas, seed con conteos esperados, `test:db:external` 18/18).
+
+Particularidades reales del cierre (registradas para reproducir):
+
+- **URL directa/unpooled + `DIRECT_URL`.** Se usó la connection string **directa/unpooled** de Neon (no la pooled de pgbouncer) tanto en `DATABASE_URL` como en `DIRECT_URL`, para evitar incompatibilidades de pgbouncer con `prisma migrate deploy`.
+- **Sin TimescaleDB.** Neon no ofrece Timescale → `create_hypertable` cayó al fallback `DO/EXCEPTION` (§4 ya lo contemplaba); `telemetry_readings` quedó como **tabla normal**, sin afectar los tests.
+- **Guard por nombre `neondb`.** Como `neondb` no contiene la señal `dev|test|staging|sandbox|smartsense_dev` del guard (§5), se confirmó manualmente con `SMARTSENSE_DB_ALLOW_UNSAFE=1` (autorizado por el usuario; es la DB del entorno Development, no producción).
+
+Evidencia completa: `docs/audit/phase-1-vercel-neon-runtime-verification.md §Cierre Fase 1.4`, `phase-1-real-db-schema-verification.md`, `phase-1-vercel-neon-seed-verification.md`, `phase-1-mer-db-integration-precheck.md`. Nunca se versionó la connection string ni la contraseña.

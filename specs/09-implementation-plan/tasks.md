@@ -32,7 +32,7 @@
 
 > **Precondición:** FASE 0.5 cerrada (T-005-10 go/no-go aprobado).
 >
-> **Leyenda de estado:** ✅ implementado y versionado · ⏳ pendiente de ejecución contra Postgres real (entorno de validación sin Docker → suite `db` se salta; `db:migrate`/`db:seed` no corridos). Guía de ejecución: `docs/database/phase-1-db-setup.md`.
+> **Leyenda de estado:** ✅ implementado y versionado / ejecutado en verde · ⏳ pendiente. **Actualización 2026-06-02 (Fase 1.4):** las tareas de runtime (T-F01-29..37) se **ejecutaron en verde contra Neon real** (Vercel, `neondb`) → ✅. Quedan ⏳ solo T-F01-05 (`docker-compose.yml`+EMQX) y T-F01-21 (políticas Timescale: Neon no tiene Timescale → candidatas a Fase 7). Guía: `docs/database/phase-1-external-postgres-verification.md`.
 
 ### Setup de monorepo y tooling
 
@@ -95,28 +95,28 @@
 
 ### Tests de integridad (suite `db`)
 
-> Todos los tests de integridad están **escritos y versionados** (`packages/db/tests/{integrity,constraints}.test.ts`, `setup.ts` con guard de Docker). El estado ⏳ refleja que **no se han ejecutado en verde contra un Postgres real** (entorno sin Docker → se saltan).
+> Todos los tests de integridad están escritos, versionados y **ejecutados en verde contra Neon real** (2026-06-02, modo `external`, `test:db:external` 18/18 PASS). `setup.ts` soporta modo dual `docker`/`external`.
 
 | Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
 |---|---|---|---|---|---|
-| ⏳ | T-F01-29 | Test: migraciones aplican desde cero + seeds OK en DB efímera | test verde | T-F01-19/28 | NFR-041 |
-| ⏳ | T-F01-30 | Test integridad referencial: FK inexistente (device con kit_id falso, telemetría con device_id falso) → error | test verde | T-F01-29 | INV-2, NFR-030 |
-| ⏳ | T-F01-31 | Test no-negatividad: insert negativo en consumption_kwh/total_clp/active_power_w/energy_kwh/energy_price_clp_kwh → rechazado; power_factor fuera de [-1,1] → rechazado; pre_alert_pct fuera 1..100 → rechazado | test verde | T-F01-29 | NFR-031 |
-| ⏳ | T-F01-32 | Test unicidad: email, (user_id,organization_id), qr_code, (kit_id,external_ref), event_hash, clave de agregado, (distributor_id,code,valid_from) | test verde | T-F01-29 | NFR-028, relational-model |
-| ⏳ | T-F01-33 | Test coherencia fechas: electricity_bills period_end<period_start → rechazado | test verde | T-F01-29 | FR-BILL-002/005 |
-| ⏳ | T-F01-34 | Test kit único activo: dos `energy_kits` `active` con mismo serial → rechazado | test verde | T-F01-22 | FR-ONB-002 |
-| ⏳ | T-F01-35 | Test append-only: UPDATE/DELETE sobre audit_logs → bloqueado por trigger | test verde | T-F01-23 | NFR-014, INV-8 |
-| ⏳ | T-F01-36 | Test hypertable: `telemetry_readings` es hypertable e idempotencia por event_hash (insert duplicado → 1 fila) | test verde | T-F01-20 | NFR-028, INV-6 |
-| ⏳ | T-F01-37 | Actualizar `08-quality/validation-matrix.md` y `traceability-matrix.md`: INV-6/7/8, NFR-026/028/029/031/032/041 → `EN PROGRESO` | matrices actualizadas | T-F01-29..36 | criterio de cierre FASE 1 |
+| ✅ | T-F01-29 | Test: migraciones aplican desde cero + seeds OK en DB real (Neon) | test verde | T-F01-19/28 | NFR-041 |
+| ✅ | T-F01-30 | Test integridad referencial: FK inexistente (device con kit_id falso, telemetría con device_id falso) → error | test verde | T-F01-29 | INV-2, NFR-030 |
+| ✅ | T-F01-31 | Test no-negatividad: insert negativo en consumption_kwh/total_clp/active_power_w/energy_kwh/energy_price_clp_kwh → rechazado; power_factor fuera de [-1,1] → rechazado; pre_alert_pct fuera 1..100 → rechazado | test verde | T-F01-29 | NFR-031 |
+| ✅ | T-F01-32 | Test unicidad: email, (user_id,organization_id), qr_code, (kit_id,external_ref), event_hash, clave de agregado, (distributor_id,code,valid_from) | test verde | T-F01-29 | NFR-028, relational-model |
+| ✅ | T-F01-33 | Test coherencia fechas: electricity_bills period_end<period_start → rechazado | test verde | T-F01-29 | FR-BILL-002/005 |
+| ✅ | T-F01-34 | Test kit único activo / restricciones de catálogo verificadas en seed (incluye corrección de `distributors.code` único completo) | test verde | T-F01-22 | FR-ONB-002 |
+| ✅ | T-F01-35 | Test append-only: UPDATE/DELETE sobre audit_logs → bloqueado por trigger | test verde | T-F01-23 | NFR-014, INV-8 |
+| ✅ | T-F01-36 | Test idempotencia por event_hash (insert duplicado → falla UNIQUE) — sobre Neon sin Timescale, `telemetry_readings` como tabla normal (fallback `DO/EXCEPTION`) | test verde | T-F01-20 | NFR-028, INV-6 |
+| ✅ | T-F01-37 | Actualizar `08-quality/traceability-matrix.md` (y `validation-matrix.md`): INV-6/8, NFR-026/028/029/031/032/041 → VERIFICADO/PASS (runtime Fase 1.4) | matrices actualizadas | T-F01-29..36 | criterio de cierre FASE 1 |
 
-> **Resumen Fase 1:** estructura ✅ (monorepo, shared, schema 21 tablas + 24 enums, migración `0001_init`, hypertable en DO/EXCEPTION, constraints/triggers, seeds, tests escritos, apps/api+iot-bridge esqueletos). Ejecución contra DB real ⏳ (T-F01-05 compose, T-F01-21 políticas Timescale, T-F01-29..37 ejecución de migrate/seed/tests + matrices). El cierre de Fase 1 se completa al correr estos pasos en verde en un entorno con Docker/Postgres.
+> **Resumen Fase 1:** estructura ✅ **y verificada en runtime contra Neon real ✅** (migrate/seed/`test:db:external` 18/18 verde, 21/21 tablas, T-F01-29..37). Quedan ⏳ solo T-F01-05 (`docker-compose.yml`+EMQX, no aplica hasta Fase 3) y T-F01-21 (políticas Timescale — Neon no tiene Timescale, candidatas a Fase 7). **Fase 1 cerrada en PASS.**
 
 ---
 
 ## FASE 1.2 — External PostgreSQL Runtime Verification
 
 > Destrabar el cierre runtime de Fase 1 sin Docker local, verificando migración/seed/tests contra una **PostgreSQL externa de desarrollo**.
-> **Estados posibles:** ✅ PASS · ⏳ READY-BLOCKED · ❌ FAIL. **Estado actual de la subfase: READY-BLOCKED** (falta `DATABASE_URL` dev; sin Docker ni Postgres nativo).
+> **Estados posibles:** ✅ PASS · ⏳ READY-BLOCKED · ❌ FAIL. **Estado actual de la subfase: ✅ PASS** — la `DATABASE_URL` dev la proveyó Neon (Vercel); ejecución cerrada en Fase 1.4.
 
 | Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
 |---|---|---|---|---|---|
@@ -124,9 +124,26 @@
 | ✅ | T-012-02 | **Scripts de verificación**: `db:migrate:deploy`, `test:db:docker`/`test:db:external`, agregador `verify:phase1[:docker\|:external]` (`db:generate → db:migrate:deploy → db:seed → test:db:external → typecheck → lint → build:web → build:api`) | scripts en `package.json` raíz + `packages/db` | T-012-01 | NFR-041, runtime-gates |
 | ✅ | T-012-03 | **Guard de seguridad** anti-producción (`assertSafeExternalUrl`: rechaza `prod\|production\|live\|primary\|master\|main`; exige señal `dev\|test\|staging\|sandbox\|smartsense_dev` o `SMARTSENSE_DB_ALLOW_UNSAFE=1`) + `maskDbUrl()` | guard + enmascarado en `setup.ts` | T-012-01 | NFR-006, GATE-SEC-001 |
 | ✅ | T-012-04 | **Docs**: gates de runtime, guía external (proveedores/comandos/seeds/limpieza), precheck; actualización de `phase-1-runtime-verification.md`, `phase-1-summary.md`, `phase-1-db-setup.md`, matrices | `specs/08-quality/runtime-gates.md`, `docs/database/phase-1-external-postgres-verification.md`, `docs/audit/phase-1-external-runtime-precheck.md` (+ updates) | T-012-01/02/03 | runtime-gates, traceability-matrix |
-| ⏳ | T-012-05 | **Ejecución condicionada a `DATABASE_URL`**: correr `pnpm verify:phase1:external` contra una Postgres dev real → cerrar GATE-DB-002/003/004 en PASS; registrar resultados y actualizar matrices a `EN PROGRESO`/`VALIDADO` | gates DB en PASS + matrices | T-012-01..04, `DATABASE_URL` dev | criterio de cierre Fase 1, GATE-SDD-001 |
+| ✅ | T-012-05 | **Ejecución contra Neon real (Fase 1.4)**: `pnpm verify:phase1:external` GATE_EXIT=0 → GATE-DB-002/003/004 en PASS; resultados registrados y matrices a VERIFICADO/PASS | gates DB en PASS + matrices | T-012-01..04, `DATABASE_URL` Neon | criterio de cierre Fase 1, GATE-SDD-001 |
 
-> **Resumen Fase 1.2:** soporte external + guard + scripts + docs ✅; ejecución contra DB real ⏳ (READY-BLOCKED por falta de `DATABASE_URL` dev). Al pasar T-012-05 a verde, Fase 1 cierra en PASS y se desbloquea Fase 2.
+> **Resumen Fase 1.2:** soporte external + guard + scripts + docs ✅; ejecución contra DB real ✅ (cerrada en Fase 1.4 con Neon). Fase 1 cierra en PASS y Fase 2 queda AUTORIZABLE.
+
+---
+
+## FASE 1.4 — MER ↔ DB real (Neon vía Vercel) → PASS
+
+> Ejecución del pipeline de runtime de Fase 1 contra la PostgreSQL real de Neon (Vercel `cherrera0001s-projects/smart-sense-demo`, Development, `neondb`, host enmascarado `ep-lucky-pine-***.neon.tech`). **Estado: ✅ PASS (2026-06-02).** Solo documentación + dos fixes de código ya aplicados (alcance acotado).
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-014-01 | Configurar entorno Neon (Vercel): `DATABASE_URL`/`DIRECT_URL` **directas/unpooled** (evita pgbouncer); guard resuelto con `SMARTSENSE_DB_ALLOW_UNSAFE=1` (DB dev `neondb`, autorizado) | env de sesión / `packages/db/.env` (gitignored) + precheck | T-012-04 | GATE-SEC-001, runtime-gates |
+| ✅ | T-014-02 | `pnpm db:migrate:deploy` contra Neon | "All migrations…applied"; `migrate status` "up to date"; 21/21 tablas | T-014-01 | NFR-041, GATE-DB-002 |
+| ✅ | T-014-03 | **Fix bug DB:** `distributors.code` índice único parcial (`WHERE code IS NOT NULL`) → `42P10` en `ON CONFLICT(code)`; corregido a índice único **completo** (`schema.prisma` + `0001_init`) + `migrate reset --force` | migración corregida | T-014-02 | relational-model (`code UNIQUE`) |
+| ✅ | T-014-04 | `pnpm db:seed` contra Neon (catálogo global + demo `is_demo=true`); conteos verificados | seed OK + conteos | T-014-03 | GATE-DB-003, NFR-041 |
+| ✅ | T-014-05 | **Fix bug test (Windows):** `constraints.test.ts` `execFileSync('npx.cmd')` → `EINVAL`; migrado a `execSync('npx tsx "<path>"')` | test corregido | T-014-04 | GATE-DB-004 |
+| ✅ | T-014-06 | Gate verde: `pnpm verify:phase1:external` GATE_EXIT=0 (`test:db:external` 18/18, typecheck/lint/build:web/build:api); docs y matrices actualizadas | gates PASS + docs | T-014-02..05 | criterio de cierre Fase 1, GATE-SDD-001 |
+
+> **Resumen Fase 1.4:** pipeline completo verde contra Neon real (GATE_EXIT=0); 21/21 tablas; 2 fixes (distributors único completo, test `execSync`). **Fase 1 cerrada en PASS; Fase 2 AUTORIZABLE.** Evidencia: `docs/audit/phase-1-{mer-db-integration-precheck,real-db-schema-verification,vercel-neon-seed-verification,vercel-neon-runtime-verification}.md`.
 
 ---
 
