@@ -133,3 +133,18 @@
 **Invariantes/NFR verificados por la suite de API (Fase 2)** — VERIFICADO/PASS contra Neon real: NFR-001 (no cross-tenant, 403 `CROSS_TENANT_DENIED`) ✅, NFR-003 (RBAC, viewer→403) ✅, NFR-013/014 (auditoría append-only en register/login/create org/create+update installation/create+update device/claim kit/pair device) ✅. Validación de payload (422 Zod) y conflictos (409 `EMAIL_TAKEN`/`KIT_ALREADY_CLAIMED`/dup `(kitId,externalRef)`) cubiertos. `passwordHash` nunca expuesto (verificado por test).
 
 > **Desviaciones documentadas (no bloquean PASS de Fase 2):** password con **bcryptjs (12 rounds)** en vez de Argon2id del canon (swap trivial); **JWT 7d** sin refresh rotado y **throttling** de auth pendiente (FR-AUTH-010/NFR-002/NFR-004 → Fase 7 hardening). Boletas (`bills`), telemetría, dashboard, reportes, desglose, alertas, recomendaciones, control y proyecciones: **pendientes Fase 3+** (ver matriz principal, filas 16–39, 45).
+
+## Cobertura Fase 3 (IoT / telemetría: ingestión, latest, range, agregación)
+
+> Marca los endpoints de telemetría implementados en `apps/api/src/modules/telemetry/` como **IMPLEMENTADO + TESTEADO (PASS)** contra Neon real. Cubre la fila **45** (ingesta IoT, `POST /iot/telemetry`) y la parte de telemetría de las filas **20** (`telemetry/latest`) y **25** (`telemetry/range`) de la matriz principal. **Sin migración nueva:** reutiliza `telemetry_readings` y `energy_aggregates` (Fase 1).
+> **Estado: ✅ IMPLEMENTADO + TESTEADO (PASS)** — 2026-06-03, `feat/phase-3-iot-telemetry`. **API 56/56 PASS** (`pnpm --filter @smartsense/api test`: 39 Fase 2 + 17 telemetría); **iot-bridge 23/23**; **DB 18/18**. Auditoría OpenAPI ↔ código 1:1 (manual): `docs/audit/phase-3-telemetry-openapi-audit.md`. Runtime: `docs/audit/phase-3-telemetry-runtime-verification.md`.
+
+| Filas matriz | Endpoint API (Fase 3) | Servicio | Implementado | Testeado | Estado |
+|---|---|---|---|---|---|
+| 45 | POST `/iot/telemetry` | telemetry (ingest) + energy-aggregation | sí | sí | PASS |
+| 20 | GET `/installations/{installationId}/telemetry/latest` | telemetry (read) | sí | sí | PASS |
+| 25 | GET `/installations/{installationId}/telemetry/range` | telemetry (read) | sí | sí | PASS |
+
+**Invariantes/NFR verificados por la suite de telemetría (Fase 3)** — VERIFICADO/PASS contra Neon real: INV-6 / NFR-028 (idempotencia por `event_hash` UNIQUE: `accepted`/`duplicate`) ✅; NFR-029 (doble timestamp: `received_timestamp` backend) ✅; NFR-030/031 (validez: no-negatividad, `power_factor ∈ [-1,1]`, `INVALID_TIMESTAMP`, rango `from>to` → 422) ✅; NFR-032 (agregación idempotente `energy_aggregates` granularity `hour`, `energy_kwh=SUM/1000`, `peak_power_w=MAX`) ✅; NFR-001 (no cross-tenant: 403; device ajeno en range → 4xx) ✅. Coherencia device/kit/installation (409 `DEVICE_KIT_MISMATCH`), device inexistente (404) y capability meter cubiertos. **0 side-effects** (ingestión no genera alertas/recomendaciones/control).
+
+> **Desviaciones documentadas (no bloquean PASS de Fase 3):** `event_hash` usa `device_id` (no `kit_qr`/`device_ref` del `.md` MQTT §5); telemetría **NO** audita (alto volumen → `audit_logs` no escrito en ingest); **agregación inline** (worker real day/semana/mes + recompute batch diferido); **device auth = JWT de usuario** (API key/kit-scope → Fase 7); **sin costeo CLP** en agregados (BillingService/TariffService → Fase 4+); MQTT productivo fuera de alcance (`iot-bridge` en dry-run). **Pendientes Fase 4+:** dashboard (fila 19/21/22), reportes (filas 23–24, parte de 25), desglose (26–28), alertas/recomendaciones (29–31), control (32–37), proyecciones (38–39).

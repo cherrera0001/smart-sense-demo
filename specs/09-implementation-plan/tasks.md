@@ -168,18 +168,25 @@
 
 > **Resumen Fase 2:** foundation + 5 módulos + tests + auditoría OpenAPI ✅, verificado contra Neon real (39/39). `app.ts` NO registra telemetry/dashboard/reports/alerts/recommendations/control (Fase 3+). DEMO_MODE intacto (`apps/web` sin cambios visuales; scaffold `apps/web/lib/api/client.ts` no usado por la UI). **Fase 2 cerrada en PASS; Fase 3 AUTORIZABLE.**
 
-## FASE 3 — IoT y telemetría
+## FASE 3 — IoT y telemetría (implementada)
 
-| ID | Descripción | Entregable | Dependencias | FR / Spec |
-|---|---|---|---|---|
-| T-F03-01 | iot-bridge: consumo MQTT (EMQX) y normalización al contrato `07-iot/telemetry-model.md` | bridge | T-F02-* | NFR-008/021 |
-| T-F03-02 | TelemetryIngestionService.ingest: validación, event_hash, UPSERT idempotente, markSeen | lógica de ingesta | T-F03-01 | NFR-028/030/031, INV-2/6/7 |
-| T-F03-03 | `POST /iot/telemetry` (token de kit, Idempotency-Key) → accepted/duplicate/invalid | endpoint | T-F03-02 | FR-DASH-001 |
-| T-F03-04 | `telemetry/latest` y `telemetry/range` (422 INVALID_RANGE) | endpoints | T-F03-02 | FR-DASH-001, FR-BRK-006 |
-| T-F03-05 | EnergyAggregationService: rollup + recompute idempotente; continuous aggregates | agregación | T-F03-02 | NFR-032 |
-| T-F03-06 | BillingService.computeCost + TariffService.getEffectiveTariff (CLP backend, null sin tarifa) | costeo | T-F03-05 | INV-4, FR-DASH-003 |
-| T-F03-07 | ReportService daily/weekly/monthly/last-three-months + endpoints | endpoints | T-F03-05/06 | FR-REP-001..005 |
-| T-F03-08 | Suite iot (idempotencia/validez/rangos/doble timestamp/reconexión) + integ reports | suite verde | T-F03-03..07 | NFR-017/020/023 |
+> **Estado: ✅ PASS (2026-06-03, `feat/phase-3-iot-telemetry`).** Módulo `telemetry` (`apps/api/src/modules/telemetry/`), **3 endpoints** bajo JWT, agregación horaria inline, shared schemas/hash y `iot-bridge` en dry-run. **Sin migración nueva** (reutiliza `telemetry_readings`/`energy_aggregates` de Fase 1). **Tests:** API **56/56** (39 Fase 2 + 17 telemetría), iot-bridge **23/23**, DB **18/18** contra Neon real.
+> **Leyenda:** ✅ implementado y verificado en verde.
+> **Desviaciones documentadas:** `event_hash` usa `device_id` (no `kit_qr`/`device_ref` del `.md` MQTT §5); telemetría **NO** audita (volumen); **agregación inline** (worker real diferido); **device auth = JWT de usuario** (API key/kit-scope → Fase 7); **sin costeo CLP** (BillingService/TariffService → Fase 4+); MQTT productivo fuera de alcance (bridge en dry-run). Detalle: `docs/implementation/phase-3-summary.md`, `docs/audit/phase-3-{spec-readiness,telemetry-openapi-audit,telemetry-runtime-verification}.md`, `docs/iot/phase-3-iot-bridge.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F03-01 | Shared: `telemetryIngestSchema`, `telemetryRangeQuerySchema`, `telemetryIngestResult` + `computeEventHash` (sha256 `device_id\|source_timestamp\|canonical(metrics)`, `packages/shared/src/telemetry/hash.ts`, `node:crypto`; +`@types/node`) | contrato compartido | T-F02-* | NFR-028, INV-6; 07-iot |
+| ✅ | T-F03-02 | `POST /iot/telemetry` (JWT, `assertInstallationAccess(operate)`): UPSERT idempotente por `event_hash` UNIQUE → `accepted`/`duplicate`; 404 device inexistente, 403 cross-tenant, 409 `DEVICE_KIT_MISMATCH`, 422 negativos/`power_factor`/`INVALID_TIMESTAMP`; capability meter (rechaza `meter===false`); `received_timestamp` backend; post-ingest actualiza device (`lastSeenAt`/`state=online`) | endpoint de ingesta | T-F03-01 | FR-DASH-001, NFR-028/030/031, INV-2/6/7 |
+| ✅ | T-F03-03 | `GET /installations/{installationId}/telemetry/latest` (`read`): `{ latestReading\|null, deviceCount, receivedTimestamp\|null }`, empty state OK | endpoint | T-F03-02 | FR-DASH-001 |
+| ✅ | T-F03-04 | `GET /installations/{installationId}/telemetry/range` (`read`): query `{from,to,device_id?,limit(500/5000)}`; 422 `from>to`; device ajeno → 4xx | endpoint | T-F03-02 | FR-DASH-001, FR-REP-005, FR-BRK-006 |
+| ✅ | T-F03-05 | `energy-aggregation.service.ts`: `upsertHourBucket`/`upsertDayBucket` → `energy_aggregates` (granularity hour/day, `energy_kwh=SUM/1000`, `peak_power_w=MAX`), idempotente por unique key; **inline** tras ingest (solo `hour`) | agregación | T-F03-02 | NFR-032 |
+| ⏳ | T-F03-06 | BillingService.computeCost + TariffService (CLP backend, null sin tarifa) — **diferido Fase 4+** (agregados sin `cost_clp`) | costeo | T-F03-05 | INV-4, FR-DASH-003 |
+| ⏳ | T-F03-07 | ReportService daily/weekly/monthly/last-three-months + endpoints — **diferido Fase 4** | endpoints | T-F03-05/06 | FR-REP-001..005 |
+| ✅ | T-F03-08 | `iot-bridge` (`apps/iot-bridge`) dry-run: `config.ts` (+`maskSecret`), `telemetry-contract.ts` (`validateIngest`), `normalizer.ts` (MQTT/plano → DTO, `event_hash`, rechaza negativos/`power_factor`/futuro), `http-forwarder.ts` (POST con Bearer), `dry-run.ts`, `mqtt-client.ts` (import dinámico, no conecta salvo `mqtt`); fixtures valid/duplicate/invalid | bridge dry-run | T-F03-01 | NFR-008; 07-iot |
+| ✅ | T-F03-09 | Suite verde contra Neon: API **56/56** (17 telemetría: ingest accepted/duplicate, 404/403/409/422, latest OK/empty, range OK/from>to/device ajeno, agregación crea `energy_aggregates`, 0 side-effects) + iot-bridge **23/23** (normalizer 10/contract 6/forwarder 7); auditoría OpenAPI ↔ código 1:1 (manual) | suites + `phase-3-telemetry-openapi-audit.md` | T-F03-02..05/08 | NFR-028/030/031, test-plan §6 |
+
+> **Resumen Fase 3:** ingestión idempotente + lectura (latest/range) + agregación horaria inline + `iot-bridge` dry-run ✅, verificado contra Neon real (API 56/56, bridge 23/23, DB 18/18). Diferidos a Fase 4+: costeo CLP (T-F03-06) y reportes (T-F03-07). MQTT productivo y worker de agregación real: fase posterior. **Fase 3 cerrada en PASS; Fase 4 AUTORIZABLE.**
 
 ## FASE 4 — Frontend dashboard y reportes
 

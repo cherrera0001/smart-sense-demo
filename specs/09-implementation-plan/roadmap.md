@@ -130,7 +130,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 
 ## FASE 3 — IoT y telemetría
 
-> **Estado: 🔓 AUTORIZABLE (2026-06-02)** — Fase 2 cerró en PASS (API base + 19 endpoints + 39 tests contra Neon); devices/installations disponibles. No iniciada aún.
+> **Estado: ✅ PASS / implementada (2026-06-03, `feat/phase-3-iot-telemetry`)** — Ingestión idempotente de telemetría + lectura (latest/range) + agregación horaria + `iot-bridge` en dry-run, sobre Neon real. **Módulo `telemetry`** (`apps/api/src/modules/telemetry/`) con **3 endpoints** bajo JWT: POST `/iot/telemetry` (idempotente por `event_hash` UNIQUE; validaciones 404/403/409 `DEVICE_KIT_MISMATCH`/422 negativos·power_factor·`INVALID_TIMESTAMP`; capability meter; post-ingest actualiza device y ejecuta `upsertHourBucket`), GET `/installations/{installationId}/telemetry/latest` y `/telemetry/range`. **Sin migración nueva:** reutiliza `telemetry_readings` y `energy_aggregates` de Fase 1. **Agregación inline** (`energy-aggregation.service.ts`, granularity `hour`, `energy_kwh=SUM/1000`, `peak_power_w=MAX`, idempotente, **sin `cost_clp`**). **Shared:** `telemetryIngestSchema`/`telemetryRangeQuerySchema`/`telemetryIngestResult` + `computeEventHash` (sha256, `packages/shared/src/telemetry/hash.ts`). **iot-bridge** (`apps/iot-bridge`) funcional en `dry-run` (modos `dry-run`/`mqtt`/`file`; no conecta broker por defecto). **Tests:** API **56/56** (39 Fase 2 + 17 telemetría), iot-bridge **23/23**, DB **18/18** contra Neon; typecheck/build/lint verdes. **Desviaciones documentadas:** `event_hash` usa `device_id` (no `kit_qr`/`device_ref`); telemetría **NO** audita (volumen); agregación inline (worker real diferido); device auth = JWT de usuario (API key/kit-scope → Fase 7); **sin costeo CLP** (Fase 4+); MQTT productivo fuera de alcance. Detalle: `docs/implementation/phase-3-summary.md`, `docs/audit/phase-3-{precheck,spec-readiness,telemetry-openapi-audit,telemetry-runtime-verification}.md`, `docs/iot/phase-3-iot-bridge.md`. **Fase 4 AUTORIZABLE.**
 
 - **Objetivo:** ingestión idempotente de telemetría, agregaciones y lecturas para dashboard/reportes básicos.
 - **Entregables:**
@@ -145,6 +145,8 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 - **FR cubiertos:** FR-DASH-001/002, FR-REP-001/002/003/004/005, FR-BILL-004 (tarifa para costeo), base de FR-BRK y FR-PROJ.
 
 ## FASE 4 — Dashboard y reportes (frontend)
+
+> **Estado: 🔓 AUTORIZABLE (2026-06-03)** — Fase 3 cerró en PASS (telemetría ingerida + agregados horarios + latest/range contra Neon); devices/installations (Fase 2) y telemetría/agregados (Fase 3) disponibles. Incluye los endpoints de lectura agregada (`dashboard`, `reports/*`) y el costeo CLP (BillingService/TariffService) aún pendientes. No iniciada aún.
 
 - **Objetivo:** shell de la app, navegación, dashboard en vivo y reportes con estados UI completos.
 - **Entregables:**
@@ -207,8 +209,8 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 | 1.2 | External PostgreSQL runtime support (PASS vía 1.4) | 1 | soporte modo dual + guard + scripts |
 | 1.4 | MER ↔ DB real (Neon vía Vercel) — **PASS** | 1.2 | cierre runtime (GATE-DB-001..004) |
 | 2 | API base — **PASS** (5 módulos, 19 endpoints, 39 tests) | 1 | AUTH, ONB, PROF, SET-002/003 |
-| 3 | IoT + telemetría — **AUTORIZABLE** | 1,2 | DASH-001/002, REP, ingesta |
-| 4 | Frontend dashboard/reportes | 2,3 | DASH, REP, onboarding/boleta UI |
+| 3 | IoT + telemetría — **PASS** (3 endpoints, agregación inline, iot-bridge dry-run, API 56/56 · bridge 23/23) | 1,2 | DASH-001 (ingesta), telemetría latest/range |
+| 4 | Frontend dashboard/reportes — **AUTORIZABLE** | 2,3 | DASH, REP, onboarding/boleta UI |
 | 5 | Desglose, alertas, recomendaciones | 3,4 | BRK, ALRT, REC |
 | 6 | Control | 2,3,5 | CTRL, PROF-005 |
 | 7 | Hardening | 1–6 | transversal + NFR |
