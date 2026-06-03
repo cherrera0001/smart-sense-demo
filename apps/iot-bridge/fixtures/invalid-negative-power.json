@@ -1,0 +1,19 @@
+{
+  "reading_id": "018f3a2b-7c10-7e2a-9b44-2f1d6c9a0e44",
+  "device_id": "018f3a2b-0001-7e2a-9b44-2f1d6c9a0e11",
+  "kit_id": "018f3a2b-0002-7e2a-9b44-2f1d6c9a0e22",
+  "installation_id": "018f3a2b-0003-7e2a-9b44-2f1d6c9a0e33",
+  "source_timestamp": "2026-06-01T13:45:10Z",
+  "metrics": {
+    "voltage_v": 221.4,
+    "current_a": 3.182,
+    "active_power_w": -698.5,
+    "reactive_power_var": 102.3,
+    "apparent_power_va": 706.1,
+    "power_factor": 0.989,
+    "energy_wh_delta": 5.82,
+    "frequency_hz": 50.012
+  },
+  "signal_quality": -58,
+  "firmware_version": "1.4.2"
+}
