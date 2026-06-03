@@ -80,5 +80,19 @@ pnpm test:db
 ## Actualización Fase 1.1 (2026-06-02) — Runtime verification → BLOCKED
 Se intentó cerrar el gate de runtime en dos iteraciones, incluyendo un **reinicio limpio** de Docker Desktop (`wsl --shutdown` + relanzar). En ambas, **el engine de Docker no inicializó** (backend WSL2 sin el distro `docker-desktop`; HTTP 500 persistente; `docker run hello-world` falla). No hay Postgres nativo como fallback y la política prohíbe instalar software. `db:migrate`/`db:seed`/`test:db` **no se ejecutaron contra DB real**. **Estado: BLOCKED (entorno), no PASS.** Bloqueo formal y remediación manual en `docs/audit/phase-1-runtime-blocker.md`. El trabajo estructural quedó commiteado; el gate se cierra cuando haya Docker/Postgres operativo.
 
+## Actualización Fase 1.2 (2026-06-02) — External PostgreSQL → READY-BLOCKED
+Para destrabar el gate de runtime sin Docker, se habilitó la verificación contra una **PostgreSQL externa de desarrollo**:
+- Modo dual en `packages/db/tests/setup.ts` (`SMARTSENSE_DB_TEST_MODE` = `docker` | `external`), **guard anti-producción** (rechaza `prod|production|live|primary|master|main`; exige `dev|test|staging|sandbox|smartsense_dev`), `maskDbUrl()`, y estados explícitos PASS/FAIL/BLOCKED (sin skip silencioso).
+- Gates SDD formalizados en `specs/08-quality/runtime-gates.md`; guía en `docs/database/phase-1-external-postgres-verification.md`; precheck en `docs/audit/phase-1-external-runtime-precheck.md`.
+
+**Estado: READY-BLOCKED** — repo listo para verificar Fase 1 con un único comando en cuanto exista `DATABASE_URL` de desarrollo. No hay DB externa en el entorno actual → gates de DB **BLOCKED**; build/type/lint/sec **PASS**. No se declara PASS.
+
+**Próximo comando único** (con `DATABASE_URL` apuntando a una DB **dev/test**, no producción):
+```bash
+export DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/smartsense_dev?schema=public"
+export SMARTSENSE_DB_TEST_MODE="external"
+pnpm verify:phase1:external
+```
+
 ## Siguiente fase recomendada
-**Fase 2 — API base** (Auth, Organizations, Installations, Devices, Onboarding) sobre Fastify, **solo tras** verificar migración/seed/tests con Docker (Fase 1.1 cerrada en PASS).
+**Fase 2 — API base** (Auth, Organizations, Installations, Devices, Onboarding) sobre Fastify, **solo tras** verificar migración/seed/tests contra Postgres real (Docker o externa, Fase 1 cerrada en PASS). **Fase 2 sigue BLOQUEADA** hasta entonces (GATE-SDD-001).

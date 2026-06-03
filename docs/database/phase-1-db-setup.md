@@ -12,7 +12,11 @@
 - Docker (para Postgres + TimescaleDB y para los tests con Testcontainers).
 - Dependencias instaladas: `pnpm install` en la raíz del monorepo.
 
-> Sin Docker: la suite `db` (Vitest + Testcontainers) **se salta** (guard de Docker), y `db:migrate`/`db:seed` no pueden ejecutarse. La estructura (schema, migración SQL, seed) ya está versionada y queda lista para correr cuando haya un Postgres disponible.
+> Sin Docker: la suite `db` puede correr contra una **PostgreSQL externa de desarrollo** (modo `external`) sin Testcontainers. La estructura (schema, migración SQL, seed) ya está versionada y queda lista para correr cuando haya un Postgres disponible. Ver §1.1.
+
+## 1.1 Alternativa sin Docker (PostgreSQL externa)
+
+Si Docker local no está operativo (caso Fase 1.1), la verificación de Fase 1 se puede cerrar apuntando a una Postgres externa de desarrollo con `SMARTSENSE_DB_TEST_MODE=external` + `DATABASE_URL`, mediante el comando único `pnpm verify:phase1:external`. Hay un **guard de seguridad** que rechaza URLs de producción. Guía completa (proveedores, comandos PowerShell/Bash, verificación de seeds, limpieza, criterios PASS/BLOCKED/FAIL): **`phase-1-external-postgres-verification.md`**. Gates SDD asociados: `specs/08-quality/runtime-gates.md`.
 
 ---
 

@@ -61,3 +61,14 @@ Se ejecutó un **reinicio limpio**: `Stop-Process` de Docker Desktop + `wsl --sh
 
 ## Veredicto Fase 1.1
 **BLOCKED (entorno)** en el gate de runtime de DB por el engine de Docker local que no inicializa (backend WSL2 sin provisionar). Todo lo verificable sin DB está en verde y el código quedó **commiteado**. Fase 2 permanece **BLOQUEADA** hasta que `db:migrate` + `db:seed` + `test:db` pasen contra Postgres real. Remediación manual: ver `phase-1-runtime-blocker.md`.
+
+## Fase 1.2 — External PostgreSQL (preparación)
+
+Ante el bloqueo persistente de Docker (Fase 1.1), se añadió una vía de verificación **sin Docker** contra una PostgreSQL externa de desarrollo:
+
+- **Modo dual en los tests** (`packages/db/tests/setup.ts`): `SMARTSENSE_DB_TEST_MODE` selecciona `docker` (Testcontainers) o `external` (`DATABASE_URL` externa ya migrada). Resolución automática si no se fuerza. **Sin skip silencioso**: estados PASS/FAIL/BLOCKED explícitos (`BLOCKED_MESSAGE` cuando el modo resuelve a `none`).
+- **Guard de seguridad** (`assertSafeExternalUrl`): rechaza `DATABASE_URL` con tokens de producción (`prod|production|live|primary|master|main`) y exige señal `dev|test|staging|sandbox|smartsense_dev` (o `SMARTSENSE_DB_ALLOW_UNSAFE=1`). `maskDbUrl()` evita imprimir credenciales en logs.
+- **Interfaz de ejecución:** `pnpm verify:phase1:external` encadena `db:generate → db:migrate:deploy → db:seed → test:db:external → typecheck → lint → build:web → build:api`.
+- **Gates SDD formalizados** en `specs/08-quality/runtime-gates.md` (GATE-DB-001..004 + build/type/lint/sec/SDD). Guía operativa end-to-end: `docs/database/phase-1-external-postgres-verification.md`. Precheck del entorno: `docs/audit/phase-1-external-runtime-precheck.md`.
+
+**Estado Fase 1.2: READY-BLOCKED.** El repo está listo para cerrar Fase 1 con **un solo comando** en cuanto exista una `DATABASE_URL` de desarrollo. En el entorno actual no hay DB externa (ni `DATABASE_URL` definida, ni Docker, ni Postgres nativo) → GATE-DB-002/003/004 = **BLOCKED**; build/type/lint/sec = **PASS**. No se declara PASS (no se ejecutó contra datos reales). Fase 2 sigue **BLOQUEADA** por GATE-SDD-001.

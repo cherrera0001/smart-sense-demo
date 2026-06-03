@@ -113,6 +113,23 @@
 
 ---
 
+## FASE 1.2 — External PostgreSQL Runtime Verification
+
+> Destrabar el cierre runtime de Fase 1 sin Docker local, verificando migración/seed/tests contra una **PostgreSQL externa de desarrollo**.
+> **Estados posibles:** ✅ PASS · ⏳ READY-BLOCKED · ❌ FAIL. **Estado actual de la subfase: READY-BLOCKED** (falta `DATABASE_URL` dev; sin Docker ni Postgres nativo).
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-012-01 | Soporte de **modo dual** en la suite `db` (`SMARTSENSE_DB_TEST_MODE` = `docker`/`external`), resolución de modo y estados explícitos PASS/FAIL/BLOCKED sin skip silencioso | `packages/db/tests/setup.ts` (`resolveTestDbMode`, `startExternalDb`, `BLOCKED_MESSAGE`) | T-F01-04 | runtime-gates GATE-DB-004 |
+| ✅ | T-012-02 | **Scripts de verificación**: `db:migrate:deploy`, `test:db:docker`/`test:db:external`, agregador `verify:phase1[:docker\|:external]` (`db:generate → db:migrate:deploy → db:seed → test:db:external → typecheck → lint → build:web → build:api`) | scripts en `package.json` raíz + `packages/db` | T-012-01 | NFR-041, runtime-gates |
+| ✅ | T-012-03 | **Guard de seguridad** anti-producción (`assertSafeExternalUrl`: rechaza `prod\|production\|live\|primary\|master\|main`; exige señal `dev\|test\|staging\|sandbox\|smartsense_dev` o `SMARTSENSE_DB_ALLOW_UNSAFE=1`) + `maskDbUrl()` | guard + enmascarado en `setup.ts` | T-012-01 | NFR-006, GATE-SEC-001 |
+| ✅ | T-012-04 | **Docs**: gates de runtime, guía external (proveedores/comandos/seeds/limpieza), precheck; actualización de `phase-1-runtime-verification.md`, `phase-1-summary.md`, `phase-1-db-setup.md`, matrices | `specs/08-quality/runtime-gates.md`, `docs/database/phase-1-external-postgres-verification.md`, `docs/audit/phase-1-external-runtime-precheck.md` (+ updates) | T-012-01/02/03 | runtime-gates, traceability-matrix |
+| ⏳ | T-012-05 | **Ejecución condicionada a `DATABASE_URL`**: correr `pnpm verify:phase1:external` contra una Postgres dev real → cerrar GATE-DB-002/003/004 en PASS; registrar resultados y actualizar matrices a `EN PROGRESO`/`VALIDADO` | gates DB en PASS + matrices | T-012-01..04, `DATABASE_URL` dev | criterio de cierre Fase 1, GATE-SDD-001 |
+
+> **Resumen Fase 1.2:** soporte external + guard + scripts + docs ✅; ejecución contra DB real ⏳ (READY-BLOCKED por falta de `DATABASE_URL` dev). Al pasar T-012-05 a verde, Fase 1 cierra en PASS y se desbloquea Fase 2.
+
+---
+
 ## FASE 2 — API base
 
 | ID | Descripción | Entregable | Dependencias | FR / Spec |

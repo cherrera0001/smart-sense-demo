@@ -106,3 +106,5 @@
 | `audit_logs` | `AuditLog` | `0001_init` (append-only trigger) | T-F01-35 append-only (UPDATE/DELETE bloqueado) |
 
 **Invariantes/NFR estructurales cubiertos por la estructura Fase 1** (a `VALIDADO` cuando la suite `db` corra en verde): INV-6 (idempotencia event_hash), INV-8 (append-only audit), NFR-026 (hypertable), NFR-028 (unicidad/idempotencia), NFR-029 (doble timestamp), NFR-031 (no-negatividad/rangos), NFR-041 (migración aplicable desde cero). Endpoints/servicios/UI de las filas 1–45: **pendientes Fase 2+**.
+
+> **Verificación runtime (Fase 1.2):** la validación de las **21 tablas** contra una PostgreSQL real (migración aplicable desde cero, seeds, integridad/constraints/append-only/idempotencia) queda cubierta por **GATE-DB-001..004** (ver `08-quality/runtime-gates.md`). Estado actual: **READY-BLOCKED** — sin `DATABASE_URL` de desarrollo en el entorno; se cierra con `pnpm verify:phase1:external`. Las filas de invariantes/NFR de arriba pasan a `EN PROGRESO`/`VALIDADO` cuando esos gates estén en PASS.

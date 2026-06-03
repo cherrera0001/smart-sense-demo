@@ -72,6 +72,25 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
   - **Estado del criterio: parcialmente cumplido.** ✅ Estructura completa y versionada (schema, migración, seeds, tests escritos). ⏳ Ejecución contra DB **pendiente de entorno**: `migrate deploy` desde cero, seeds y suite `db` aún no corridos en un Postgres real (sin Docker en el entorno de validación → tests se saltan por guard). Las matrices se actualizarán a `EN PROGRESO` una vez verde la ejecución.
 - **FR cubiertos:** base estructural de todos; valida invariantes de canon (no-negatividad, idempotencia por `event_hash`, append-only audit). Habilita FR-ONB-005, FR-DASH-002, FR-CTRL-007.
 
+## FASE 1.2 — External PostgreSQL Runtime Verification
+
+> **Precondición:** FASE 1 estructural ✅; FASE 1.1 (runtime con Docker) **BLOCKED** por engine de Docker local que no inicializa (ver `docs/audit/phase-1-runtime-blocker.md`).
+>
+> **Estados posibles de la subfase:** `PASS` (verificación contra Postgres real en verde) · `READY-BLOCKED` (repo listo, falta `DATABASE_URL`) · `FAIL` (DB accesible pero un gate falla con datos reales).
+> **Estado actual: READY-BLOCKED.**
+
+- **Objetivo:** destrabar el cierre runtime de Fase 1 sin depender de Docker local, ejecutando `db:migrate:deploy` + `db:seed` + `test:db` contra una **PostgreSQL externa de desarrollo**, bajo los mismos criterios PASS/FAIL/BLOCKED del flujo SDD.
+- **Entregables:**
+  - Soporte de **modo dual** en `packages/db/tests/setup.ts` (`SMARTSENSE_DB_TEST_MODE` = `docker` | `external`), sin skip silencioso (estados PASS/FAIL/BLOCKED explícitos).
+  - **Guard de seguridad** anti-producción (`assertSafeExternalUrl`: rechaza `prod|production|live|primary|master|main`; exige `dev|test|staging|sandbox|smartsense_dev` o `SMARTSENSE_DB_ALLOW_UNSAFE=1`) + `maskDbUrl()`.
+  - Interfaz de ejecución agregada `pnpm verify:phase1:external` (`db:generate → db:migrate:deploy → db:seed → test:db:external → typecheck → lint → build:web → build:api`).
+  - Gates SDD de runtime formalizados: `specs/08-quality/runtime-gates.md` (GATE-DB-001..004, GATE-WEB/API/TYPE/LINT/SEC/SDD).
+  - Docs: `docs/database/phase-1-external-postgres-verification.md`, `docs/audit/phase-1-external-runtime-precheck.md`; actualización de `phase-1-runtime-verification.md` y `phase-1-summary.md`.
+- **Dependencias:** FASE 1 (estructura) implementada.
+- **Criterio de cierre (→ PASS):** `pnpm verify:phase1:external` con `DATABASE_URL` de desarrollo termina en exit 0 (migración 21 tablas + 24 enums, seeds con conteos esperados, `test:db:external` verde, typecheck/lint/builds verdes). Recién entonces Fase 1 pasa a PASS, se actualizan las matrices y se desbloquea Fase 2 (GATE-SDD-001).
+- **Estado del criterio:** **READY-BLOCKED** — no hay `DATABASE_URL` externa en el entorno actual (ni Docker, ni Postgres nativo). GATE-DB-002/003/004 = BLOCKED; build/type/lint/sec = PASS. Un único comando cierra la subfase cuando exista la DB.
+- **FR cubiertos:** N/A (verificación runtime de la base estructural de Fase 1; cubre INV-6/8 y NFR-026/028/029/031/032/041 al pasar a PASS).
+
 ## FASE 2 — API base (auth, organizations, installations, devices, onboarding)
 
 - **Objetivo:** levantar la API Fastify con autenticación, RBAC multi-tenant y el flujo de onboarding hasta dispositivos.
@@ -161,6 +180,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 |---|---|---|---|
 | 0 | Ordenamiento / gobierno | — | trazabilidad de los 87 FR |
 | 1 | DB + dominio (21 tablas) | 0 | base estructural + invariantes |
+| 1.2 | External PostgreSQL runtime verification (READY-BLOCKED) | 1 | verificación runtime (GATE-DB-001..004) |
 | 2 | API base | 1 | AUTH, ONB, PROF, SET-002/003 |
 | 3 | IoT + telemetría | 1,2 | DASH-001/002, REP, ingesta |
 | 4 | Frontend dashboard/reportes | 2,3 | DASH, REP, onboarding/boleta UI |
