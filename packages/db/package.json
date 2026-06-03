@@ -19,6 +19,8 @@
     "seed": "tsx prisma/seed.ts",
     "studio": "prisma studio",
     "test": "vitest run",
+    "test:docker": "cross-env SMARTSENSE_DB_TEST_MODE=docker vitest run",
+    "test:external": "cross-env SMARTSENSE_DB_TEST_MODE=external vitest run",
     "typecheck": "tsc --noEmit"
   },
   "prisma": {
@@ -28,6 +30,7 @@
     "@prisma/client": "^5.22.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "prisma": "^5.22.0",
     "tsx": "^4.19.0",
     "vitest": "^2.1.0",

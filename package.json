@@ -18,10 +18,16 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "test:db": "pnpm --filter @smartsense/db test",
+    "test:db:docker": "pnpm --filter @smartsense/db test:docker",
+    "test:db:external": "pnpm --filter @smartsense/db test:external",
     "db:generate": "pnpm --filter @smartsense/db generate",
     "db:migrate": "pnpm --filter @smartsense/db migrate",
+    "db:migrate:deploy": "pnpm --filter @smartsense/db migrate:deploy",
     "db:seed": "pnpm --filter @smartsense/db seed",
-    "db:studio": "pnpm --filter @smartsense/db studio"
+    "db:studio": "pnpm --filter @smartsense/db studio",
+    "verify:phase1": "pnpm db:generate && pnpm db:migrate && pnpm db:seed && pnpm test:db && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api",
+    "verify:phase1:docker": "pnpm db:generate && pnpm db:migrate && pnpm db:seed && pnpm test:db:docker && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api",
+    "verify:phase1:external": "pnpm db:generate && pnpm db:migrate:deploy && pnpm db:seed && pnpm test:db:external && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
