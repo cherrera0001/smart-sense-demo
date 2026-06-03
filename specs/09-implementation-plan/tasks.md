@@ -147,20 +147,26 @@
 
 ---
 
-## FASE 2 — API base
+## FASE 2 — API base (implementada)
 
-| ID | Descripción | Entregable | Dependencias | FR / Spec |
-|---|---|---|---|---|
-| T-F02-01 | Bootstrap Fastify + plugins (validación schema, JWT, error-model) en `apps/api` | servidor base | T-F01-* | NFR-007; 04-api |
-| T-F02-02 | Capa de repositorios con scoping obligatorio por `organization_id` (TenantContext) | repos base | T-F02-01 | NFR-001/040 |
-| T-F02-03 | AuthService: register/login/refresh/logout/me (Argon2id, JWT access≤15min + refresh rotado, throttling) | endpoints `/auth/*` | T-F02-01 | FR-AUTH-001..004/010, NFR-002/004 |
-| T-F02-04 | Motor RBAC (matriz FR-AUTH-009) como guard de Fastify | middleware authz | T-F02-03 | NFR-003 |
-| T-F02-05 | OrganizationService + endpoints `/organizations` | endpoints | T-F02-03 | FR-AUTH-001/006/007/008, FR-SET-008 |
-| T-F02-06 | InstallationService + `/installations` (GET/POST/PATCH); audit en tarifa/estado | endpoints | T-F02-04 | FR-ONB-008, FR-SET-002/004 |
-| T-F02-07 | OnboardingService + `/onboarding/{kit/scan,kit/claim,devices/pair,status}` (audit en claim) | endpoints | T-F02-06 | FR-ONB-001..008 |
-| T-F02-08 | DeviceService + `/devices` y `/installations/{id}/devices` | endpoints | T-F02-06 | FR-ONB-005, FR-SET-003 |
-| T-F02-09 | AuditService (record/query) integrado en acciones sensibles | servicio + append-only | T-F02-02 | NFR-013/014 |
-| T-F02-10 | OpenAPI de estos grupos + tests integ (happy/error/authz/cross-tenant) | suite verde + openapi.yaml | T-F02-03..08 | test-plan §3/§5/§7 |
+> **Estado: ✅ PASS (2026-06-02).** API Fastify 5 + `@fastify/jwt` + bcryptjs + Zod + Prisma. **5 módulos** (auth, organizations, installations, devices, onboarding), **19 endpoints**, **39/39 tests PASS** contra Neon real (`pnpm --filter @smartsense/api test`: auth 6, orgs 4, installations 8, devices 13, onboarding 8).
+> **Leyenda:** ✅ implementado y verificado en verde.
+> **Desviaciones documentadas:** (1) **bcryptjs (12 rounds)** en vez de Argon2id del canon — swap a `@node-rs/argon2` trivial (aislado en lib `password`); (2) **JWT único a 7d** en vez de access ≤15min + refresh rotado; (3) **sin throttling** de auth aún → ambos diferidos a Fase 7 (hardening). Detalle: `docs/implementation/phase-2-summary.md`, `docs/audit/phase-2-openapi-implementation-audit.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F02-01 | Bootstrap Fastify 5 + plugins decorados en instancia raíz: `prisma`, `request-id`, `error-handler` uniforme `{code,message,details,traceId}`, `auth` (JWT, sub=userId, exp 7d). Libs compartidas `errors`/`access`/`audit`/`password` | servidor base + plugins + libs | T-F01-* | NFR-007; 04-api/error-model |
+| ✅ | T-F02-02 | Tenant-scope obligatorio por `organization_id` vía `assertOrgAccess`/`assertInstallationAccess`/`assertDeviceAccess` (acceso ajeno → `CROSS_TENANT_DENIED`) | lib `access` + scoping en servicios | T-F02-01 | NFR-001/040 |
+| ✅ | T-F02-03 | Módulo `auth` (routes/service/schemas/test): `POST /auth/register`, `/auth/login`, `/auth/logout`, `GET /auth/me`. Password bcryptjs 12 rounds; `passwordHash` nunca en respuestas. **Desviación:** Argon2id pendiente; JWT 7d sin refresh rotado; throttling pendiente | endpoints `/auth/*` (6 tests) | T-F02-01 | FR-AUTH-001..004/010, NFR-002/004 |
+| ✅ | T-F02-04 | Motor RBAC (`ROLES` manage/operate/read; roles owner/admin/operator/viewer) como guard; viewer escribe → 403 | middleware authz | T-F02-03 | NFR-003, FR-AUTH-009 |
+| ✅ | T-F02-05 | Módulo `organizations`: `GET/POST /organizations`, `GET /organizations/{id}`; audit en create org | endpoints (4 tests) | T-F02-03 | FR-AUTH-001/006/007/008, FR-SET-008 |
+| ✅ | T-F02-06 | Módulo `installations`: `GET/POST /installations`, `GET/PATCH /installations/{id}`; audit en create+update | endpoints (8 tests) | T-F02-04 | FR-ONB-008, FR-SET-002/004 |
+| ✅ | T-F02-07 | Módulo `onboarding`: `POST /onboarding/kit/scan`, `/kit/claim`, `/devices/pair`, `GET /onboarding/status`; audit en claim kit y pair device; 409 `KIT_ALREADY_CLAIMED` | endpoints (8 tests) | T-F02-06 | FR-ONB-001..008 |
+| ✅ | T-F02-08 | Módulo `devices`: `GET /installations/{installationId}/devices`, `POST /devices`, `GET/PATCH /devices/{id}`; audit en create+update; 409 dup `(kitId,externalRef)` | endpoints (13 tests) | T-F02-06 | FR-ONB-005, FR-SET-003 |
+| ✅ | T-F02-09 | `writeAudit` (append-only) integrado en register/login/create org/create+update installation/create+update device/claim kit/pair device | lib `audit` + integración | T-F02-02 | NFR-013/014 |
+| ✅ | T-F02-10 | Tests integ (happy/401/403 cross-tenant/403 RBAC viewer/409/422/sin passwordHash) 39/39 PASS contra Neon; auditoría OpenAPI ↔ código 1:1 (manual) | suite verde + `phase-2-openapi-implementation-audit.md` | T-F02-03..08 | test-plan §3/§5/§7 |
+
+> **Resumen Fase 2:** foundation + 5 módulos + tests + auditoría OpenAPI ✅, verificado contra Neon real (39/39). `app.ts` NO registra telemetry/dashboard/reports/alerts/recommendations/control (Fase 3+). DEMO_MODE intacto (`apps/web` sin cambios visuales; scaffold `apps/web/lib/api/client.ts` no usado por la UI). **Fase 2 cerrada en PASS; Fase 3 AUTORIZABLE.**
 
 ## FASE 3 — IoT y telemetría
 

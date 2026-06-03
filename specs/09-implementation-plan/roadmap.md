@@ -112,8 +112,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 
 ## FASE 2 — API base (auth, organizations, installations, devices, onboarding)
 
-> **Estado: 🔓 DESBLOQUEADA / AUTORIZABLE (2026-06-02)** — Fase 1 cerró en PASS contra Neon real; GATE-SDD-001 satisfecho. No iniciada aún.
-
+> **Estado: ✅ PASS / implementada (2026-06-02)** — API Fastify 5 con JWT, RBAC multi-tenant y onboarding hasta dispositivos, sobre Neon real. **5 módulos** (auth, organizations, installations, devices, onboarding), **19 endpoints**, **39/39 tests PASS** (`pnpm --filter @smartsense/api test`: auth 6, orgs 4, installations 8, devices 13, onboarding 8). Plugins (prisma/request-id/error-handler/auth) en instancia raíz; libs `errors`/`access`/`audit`/`password`; tenant-scope vía `assert*Access` (`CROSS_TENANT_DENIED`); auditoría append-only en acciones sensibles; error-handler uniforme `{code,message,details,traceId}`. **Desviación documentada:** password con bcryptjs (12 rounds) en vez de Argon2id del canon (swap a `@node-rs/argon2` trivial). `app.ts` NO registra telemetry/dashboard/reports/alerts/recommendations/control (Fase 3+). Detalle en `docs/implementation/phase-2-summary.md` y `docs/audit/phase-2-openapi-implementation-audit.md`. **Fase 3 AUTORIZABLE.**
 
 - **Objetivo:** levantar la API Fastify con autenticación, RBAC multi-tenant y el flujo de onboarding hasta dispositivos.
 - **Entregables:**
@@ -126,9 +125,12 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
   - AuthService, OrganizationService, InstallationService, OnboardingService, DeviceService, AuditService.
 - **Dependencias:** FASE 1.
 - **Criterio de cierre:** integ happy+error+authz para cada endpoint; suite cross-tenant (NFR-001) y RBAC (NFR-003) verde; claim auditado (NFR-013); OpenAPI de estos grupos validado; matriz filas 1–13 y 40–41 → `EN PROGRESO`.
+  - **Estado del criterio: ✅ CUMPLIDO (2026-06-02).** 39/39 tests verdes contra Neon real (happy + 401 + 403 cross-tenant `CROSS_TENANT_DENIED` + 403 RBAC viewer + 409 `EMAIL_TAKEN`/`KIT_ALREADY_CLAIMED`/dup `(kitId,externalRef)` + 422 + sin `passwordHash`); claim/cambios auditados (append-only); OpenAPI ↔ código 1:1 verificado manualmente (`docs/audit/phase-2-openapi-implementation-audit.md`). Matrices de trazabilidad marcadas IMPLEMENTADO+TESTEADO (PASS) para los grupos auth/orgs/installations/devices/onboarding.
 - **FR cubiertos:** FR-AUTH-001/002/003/004/009/010, FR-ONB-001/002/003/004/005/006/007/008, FR-PROF-001..004 (vía PATCH installation), FR-SET-002/003.
 
 ## FASE 3 — IoT y telemetría
+
+> **Estado: 🔓 AUTORIZABLE (2026-06-02)** — Fase 2 cerró en PASS (API base + 19 endpoints + 39 tests contra Neon); devices/installations disponibles. No iniciada aún.
 
 - **Objetivo:** ingestión idempotente de telemetría, agregaciones y lecturas para dashboard/reportes básicos.
 - **Entregables:**
@@ -204,8 +206,8 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 | 1 | DB + dominio (21 tablas) — **PASS / cerrada** | 0 | base estructural + invariantes |
 | 1.2 | External PostgreSQL runtime support (PASS vía 1.4) | 1 | soporte modo dual + guard + scripts |
 | 1.4 | MER ↔ DB real (Neon vía Vercel) — **PASS** | 1.2 | cierre runtime (GATE-DB-001..004) |
-| 2 | API base — **AUTORIZABLE** | 1 | AUTH, ONB, PROF, SET-002/003 |
-| 3 | IoT + telemetría | 1,2 | DASH-001/002, REP, ingesta |
+| 2 | API base — **PASS** (5 módulos, 19 endpoints, 39 tests) | 1 | AUTH, ONB, PROF, SET-002/003 |
+| 3 | IoT + telemetría — **AUTORIZABLE** | 1,2 | DASH-001/002, REP, ingesta |
 | 4 | Frontend dashboard/reportes | 2,3 | DASH, REP, onboarding/boleta UI |
 | 5 | Desglose, alertas, recomendaciones | 3,4 | BRK, ALRT, REC |
 | 6 | Control | 2,3,5 | CTRL, PROF-005 |

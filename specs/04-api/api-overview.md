@@ -3,6 +3,12 @@
 > Deriva de `specs/_canon.md`, `specs/02-domain/domain-model.md`, `specs/03-data-model/relational-model.md` y `specs/01-requirements/functional-requirements.md`.
 > Contrato formal: `openapi.yaml` (OpenAPI 3.1). Errores: `error-model.md`. AuthZ/AuthN: `auth-and-permissions.md`.
 
+## Estado de implementación (Fase 2)
+
+> **✅ PASS (2026-06-02, `feat/phase-2-api-base`).** Implementados en `apps/api` (Fastify 5) y verificados con 39/39 tests contra Neon real: **19 endpoints** de los grupos **Auth** (4), **Organizations** (3), **Installations** (4), **Devices** (4) y **Onboarding** (4). Detalle y auditoría OpenAPI ↔ código 1:1: `docs/audit/phase-2-openapi-implementation-audit.md` y `docs/implementation/phase-2-summary.md`.
+> **Diferidos (Fase 3+):** Telemetry, Dashboard, Reports (Fase 3); Breakdown, Alerts, Recommendations (Fase 5); Control (Fase 6); Bills (Fase 4). Estos grupos están en el contrato pero **aún no implementados**.
+> **Desviación documentada:** password con bcryptjs (12 rounds) en vez de Argon2id del canon; JWT único a 7d (refresh rotado + throttling pendientes → Fase 7).
+
 ## 1. Estilo y principios
 
 - **REST** sobre HTTP/JSON. Recursos en plural y `snake_case` en el cuerpo (alineado al canon de tablas).

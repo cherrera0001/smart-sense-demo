@@ -108,3 +108,28 @@
 **Invariantes/NFR estructurales cubiertos por la estructura Fase 1** — **VERIFICADO/PASS contra Neon real** (2026-06-02, `test:db:external` 18/18): INV-6 (idempotencia event_hash) ✅, INV-8 (append-only audit) ✅, NFR-028 (unicidad/idempotencia) ✅, NFR-029 (doble timestamp) ✅, NFR-031 (no-negatividad/rangos) ✅, NFR-041 (migración aplicable desde cero) ✅. NFR-026 (hypertable): **N/A en Neon** (sin TimescaleDB → fallback `DO/EXCEPTION`, `telemetry_readings` como tabla normal; queda pendiente verificar Timescale en un motor que lo soporte). Endpoints/servicios/UI de las filas 1–45: **pendientes Fase 2+**.
 
 > **Verificación runtime (Fase 1.4):** la validación de las **21 tablas** contra una PostgreSQL real (migración aplicable desde cero, seeds, integridad/constraints/append-only/idempotencia) está cubierta por **GATE-DB-001..004** (ver `08-quality/runtime-gates.md`). Estado actual: **✅ VERIFICADO/PASS** contra **Neon** (Vercel, `neondb`) — `pnpm verify:phase1:external` GATE_EXIT=0, 21/21 tablas presentes. Las filas de invariantes/NFR de arriba quedan en PASS (excepto NFR-026 hypertable, N/A en Neon).
+
+## Cobertura Fase 2 (API base: auth, organizations, installations, devices, onboarding)
+
+> Marca los endpoints de Fase 2 implementados en `apps/api` (Fastify 5) como **IMPLEMENTADO + TESTEADO (PASS)** contra Neon real. Cubre filas 1–2, 6–13, 40–41 de la matriz principal en lo correspondiente a sus endpoints de Fase 2 (auth/orgs/installations/devices/onboarding). Endpoints/servicios de telemetría, dashboard, reportes, desglose, boletas, alertas, recomendaciones, control y proyecciones: **pendientes Fase 3+**.
+> **Estado: ✅ IMPLEMENTADO + TESTEADO (PASS)** — 2026-06-02, `feat/phase-2-api-base`. **39/39 tests PASS** (`pnpm --filter @smartsense/api test`: auth 6, orgs 4, installations 8, devices 13, onboarding 8). Auditoría OpenAPI ↔ código 1:1 (manual): `docs/audit/phase-2-openapi-implementation-audit.md`.
+
+| Filas matriz | Endpoint API (Fase 2) | Servicio | Implementado | Testeado | Estado |
+|---|---|---|---|---|---|
+| 1 | POST `/auth/register` | auth | sí | sí | PASS |
+| 2 | POST `/auth/login` · GET `/auth/me` | auth | sí | sí | PASS |
+| 2 | POST `/auth/logout` | auth | sí | sí | PASS |
+| 6 | (motor RBAC + tenant-scope `assert*Access`) | access | sí | sí | PASS |
+| 5/44 | GET `/organizations` · POST `/organizations` · GET `/organizations/{id}` | organizations | sí | sí | PASS |
+| 11/12/40 | GET `/installations` · POST `/installations` | installations | sí | sí | PASS |
+| 13/40 | GET `/installations/{id}` · PATCH `/installations/{id}` | installations | sí | sí | PASS |
+| 7 | POST `/onboarding/kit/scan` | onboarding | sí | sí | PASS |
+| 8 | POST `/onboarding/kit/claim` | onboarding | sí | sí | PASS |
+| 9 | POST `/onboarding/devices/pair` | onboarding | sí | sí | PASS |
+| 13 | GET `/onboarding/status` | onboarding | sí | sí | PASS |
+| 10/41 | GET `/installations/{installationId}/devices` · POST `/devices` | devices | sí | sí | PASS |
+| 41 | GET `/devices/{id}` · PATCH `/devices/{id}` | devices | sí | sí | PASS |
+
+**Invariantes/NFR verificados por la suite de API (Fase 2)** — VERIFICADO/PASS contra Neon real: NFR-001 (no cross-tenant, 403 `CROSS_TENANT_DENIED`) ✅, NFR-003 (RBAC, viewer→403) ✅, NFR-013/014 (auditoría append-only en register/login/create org/create+update installation/create+update device/claim kit/pair device) ✅. Validación de payload (422 Zod) y conflictos (409 `EMAIL_TAKEN`/`KIT_ALREADY_CLAIMED`/dup `(kitId,externalRef)`) cubiertos. `passwordHash` nunca expuesto (verificado por test).
+
+> **Desviaciones documentadas (no bloquean PASS de Fase 2):** password con **bcryptjs (12 rounds)** en vez de Argon2id del canon (swap trivial); **JWT 7d** sin refresh rotado y **throttling** de auth pendiente (FR-AUTH-010/NFR-002/NFR-004 → Fase 7 hardening). Boletas (`bills`), telemetría, dashboard, reportes, desglose, alertas, recomendaciones, control y proyecciones: **pendientes Fase 3+** (ver matriz principal, filas 16–39, 45).
