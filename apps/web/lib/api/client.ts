@@ -53,3 +53,23 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   }
   return json as T;
 }
+
+/**
+ * Métodos de Fase 4 (dashboard/reportes/desglose). PREPARATORIOS: NO se usan en páginas
+ * todavía. La conexión visual real (conmutar DEMO_MODE=false por pantalla) queda para una
+ * subfase controlada con paridad verde. Bajo DEMO_MODE estas llamadas fallan a propósito.
+ */
+export const energyApi = {
+  getDashboard: (installationId: string, token?: string) =>
+    apiFetch(`/installations/${installationId}/dashboard`, { token }),
+  getReportsDaily: (installationId: string, token?: string) =>
+    apiFetch(`/installations/${installationId}/reports/daily`, { token }),
+  getReportsWeekly: (installationId: string, token?: string) =>
+    apiFetch(`/installations/${installationId}/reports/weekly`, { token }),
+  getReportsMonthly: (installationId: string, token?: string) =>
+    apiFetch(`/installations/${installationId}/reports/monthly`, { token }),
+  getReportsLastThreeMonths: (installationId: string, token?: string) =>
+    apiFetch(`/installations/${installationId}/reports/last-three-months`, { token }),
+  getBreakdown: (installationId: string, query?: string, token?: string) =>
+    apiFetch(`/installations/${installationId}/breakdown${query ? `?${query}` : ''}`, { token }),
+};
