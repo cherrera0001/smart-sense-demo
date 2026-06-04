@@ -112,4 +112,137 @@ describe('auth module', () => {
     expect(owner.role).toBe('owner');
     expect(owner.organization).toMatchObject({ id: user.organizationId });
   });
+
+  // -------------------------------------------------------------------------
+  // Refresh-token rotation (Fase 7)
+  // -------------------------------------------------------------------------
+
+  function decodeJwtPayload(token: string): Record<string, unknown> {
+    const [, payload] = token.split('.');
+    return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  it('login entrega access (token) + refresh_token', async () => {
+    const payload = newRegisterPayload();
+    await app.inject({ method: 'POST', url: '/auth/register', payload });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      payload: { email: payload.email, password: payload.password },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.token).toBeTypeOf('string');
+    expect(body.refresh_token).toBeTypeOf('string');
+    expect(body.refresh_token.length).toBeGreaterThan(0);
+  });
+
+  it('register sigue devolviendo token + user + organization (+ refresh_token)', async () => {
+    const payload = newRegisterPayload();
+    const res = await app.inject({ method: 'POST', url: '/auth/register', payload });
+
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.token).toBeTypeOf('string');
+    expect(body.refresh_token).toBeTypeOf('string');
+    expect(body.user).toMatchObject({ email: payload.email });
+    expect(body.organization).toMatchObject({ name: payload.organizationName });
+  });
+
+  it('access token (payload) NO contiene passwordHash', async () => {
+    const payload = newRegisterPayload();
+    const res = await app.inject({ method: 'POST', url: '/auth/register', payload });
+    const { token } = res.json();
+
+    const decoded = decodeJwtPayload(token);
+    expect(decoded.sub).toBeTypeOf('string');
+    expect(decoded.passwordHash).toBeUndefined();
+    expect(decoded.password_hash).toBeUndefined();
+  });
+
+  it('POST /auth/refresh con refresh válido → nuevo access + nuevo refresh (distinto)', async () => {
+    const payload = newRegisterPayload();
+    const reg = await app.inject({ method: 'POST', url: '/auth/register', payload });
+    const { token: oldAccess, refresh_token: oldRefresh } = reg.json();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      payload: { refresh_token: oldRefresh },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.token).toBeTypeOf('string');
+    expect(body.refresh_token).toBeTypeOf('string');
+    expect(body.refresh_token).not.toBe(oldRefresh);
+    // El nuevo access apunta al mismo sujeto.
+    expect(decodeJwtPayload(body.token).sub).toBe(decodeJwtPayload(oldAccess).sub);
+  });
+
+  it('refresh reutilizado (el viejo tras rotar) → 401', async () => {
+    const payload = newRegisterPayload();
+    const reg = await app.inject({ method: 'POST', url: '/auth/register', payload });
+    const { refresh_token: oldRefresh } = reg.json();
+
+    // Primera rotación OK.
+    const first = await app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      payload: { refresh_token: oldRefresh },
+    });
+    expect(first.statusCode).toBe(200);
+
+    // Reuso del refresh ya rotado → 401.
+    const reuse = await app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      payload: { refresh_token: oldRefresh },
+    });
+    expect(reuse.statusCode).toBe(401);
+
+    // Detección de reuso revoca todo el árbol: el nuevo refresh también queda inválido.
+    const newRefresh = first.json().refresh_token;
+    const afterReuse = await app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      payload: { refresh_token: newRefresh },
+    });
+    expect(afterReuse.statusCode).toBe(401);
+  });
+
+  it('refresh inválido → 401', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      payload: { refresh_token: `nope-${randomUUID()}` },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('logout con refresh lo revoca (refresh luego → 401)', async () => {
+    const payload = newRegisterPayload();
+    const reg = await app.inject({ method: 'POST', url: '/auth/register', payload });
+    const { refresh_token } = reg.json();
+
+    const logout = await app.inject({
+      method: 'POST',
+      url: '/auth/logout',
+      payload: { refresh_token },
+    });
+    expect(logout.statusCode).toBe(200);
+    expect(logout.json()).toMatchObject({ ok: true });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/refresh',
+      payload: { refresh_token },
+    });
+    expect(res.statusCode).toBe(401);
+  });
 });
