@@ -73,3 +73,13 @@ export const energyApi = {
   getBreakdown: (installationId: string, query?: string, token?: string) =>
     apiFetch(`/installations/${installationId}/breakdown${query ? `?${query}` : ''}`, { token }),
 };
+
+/** Métodos de Fase 5 (alertas/recomendaciones). PREPARATORIOS: no usados en UI; DEMO_MODE. */
+export const insightsApi = {
+  getAlerts: (installationId: string, query?: string, token?: string) =>
+    apiFetch(`/installations/${installationId}/alerts${query ? `?${query}` : ''}`, { token }),
+  reviewAlert: (alertId: string, body: { status: 'reviewed' | 'dismissed'; note?: string }, token?: string) =>
+    apiFetch(`/alerts/${alertId}/review`, { method: 'PATCH', body, token }),
+  getRecommendations: (installationId: string, query?: string, token?: string) =>
+    apiFetch(`/installations/${installationId}/recommendations${query ? `?${query}` : ''}`, { token }),
+};
