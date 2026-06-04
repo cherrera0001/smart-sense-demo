@@ -199,3 +199,27 @@
 **Invariantes/reglas verificadas por la suite de Fase 6** — VERIFICADO/PASS contra Neon real: **dry-run** (persiste `status='success'`+`dry_run=true`; API expone `status='dry_run'`; **sin downlink físico ni MQTT**) ✅; **INV-3 / NFR-013/014** (audit append-only por acción: `control.requested`/`control.resolved`, `control_schedule.created/updated`, `consumption_limit.created/updated`) ✅; **INV-5 / NFR-003** (**RBAC viewer → 403** sin downlink en actions/schedules/limits) ✅; NFR-001 (no cross-tenant: 403 vía `assertDeviceAccess`) ✅; **capability** (`409 DEVICE_NOT_CONTROLLABLE` si `capabilities.switch≠true`) ✅; **idempotencia** (`(device_id, idempotency_key)` no duplica; UNIQUE parcial migración 0003) ✅; **CHECK** (`threshold>0` o 422) ✅; **0 side-effects** (control no genera alerts/recommendations; schedules/limits **no ejecutan**) ✅; **estado lógico** (`control-state` deriva de la última acción dry-run, **no** físico confirmado) ✅.
 
 > **Desviaciones/limitaciones documentadas (no bloquean PASS · dry-run de Fase 6):** **dry-run only** (sin efecto físico, sin MQTT downlink, sin `resolveAction` async); `control-state` **lógico/simulado** (no físico confirmado); schedules/limits **solo persisten política** (sin scheduler ejecutor); `set_limit`-as-schedule/limit → 422 (diferido); respuestas **superset** del `openapi.yaml`. La **fila 34** (resolución async ACK/timeout, FR-CTRL-008) queda **pendiente** (fase futura: downlink físico — precondiciones en `docs/security/phase-6-control-safety.md`). **Pendiente (entrega frontend posterior):** UI `/control` y `/smart-control` (filas 32–37, parte UI). **Pendientes Fase 7:** hardening transversal (seguridad/observabilidad/E2E/carga/despliegue) + proyecciones (38–39, V1).
+
+## Cobertura Fase 7 (hardening: seguridad, auth refresh, ops/health, CI, E2E)
+
+> Fase 7 es **transversal** (endurecimiento de los 87 FR e invariantes): no agrega filas de negocio a la matriz principal, sino que materializa NFR de seguridad/operación y añade un endpoint de auth (`/auth/refresh`) y dos operativos (`/healthz`, `/readyz`). Cubre/endurece las filas **2** (login/throttling), **4** (seguridad: cambio de clave / revocación de sesiones vía refresh-token rotation) y **6** (authz transversal) en su parte de hardening, y aporta cobertura E2E (smoke) de las filas 1–2, 12, 19, 29, 31.
+> **Estado: ✅ IMPLEMENTADO + TESTEADO (PASS)** — 2026-06-04, `feat/phase-7-hardening`. **API 156/156 PASS** (`pnpm --filter @smartsense/api test`: 140 de Fase 6 + security 7 + health 2 + auth-refresh 7); **iot-bridge 23/23**; **DB 18/18**. Contra Neon real (credencial **rotada**). Auditoría OpenAPI ↔ código (paths nuevos como adición Fase 7) manual: `docs/audit/phase-7-openapi-implementation-audit.md`. Runtime: `docs/audit/phase-7-runtime-verification.md`.
+
+| Gate / Endpoint (Fase 7) | Mecanismo / Servicio | Implementado | Testeado | Estado |
+|---|---|---|---|---|
+| GATE-SEC-002 (secret scan + rotación Neon) | `scripts/secret-scan.mjs` + `ALTER ROLE` | sí | sí (exit 0) | PASS |
+| GATE-SEC-003 (CORS sin wildcard prod) | `plugins/cors.ts` + `config/env.ts` | sí | sí (security) | PASS |
+| GATE-SEC-004 (JWT fuerte prod) | `config/env.ts` | sí | sí (security) | PASS |
+| GATE-SEC-005 (rate-limit auth/control) | `plugins/rate-limit.ts` | sí | sí (security, 429) | PASS |
+| Cabeceras seguridad (helmet `nosniff`) | `plugins/security-headers.ts` | sí | sí (security) | PASS |
+| POST `/auth/refresh` (rotación) | auth + `refresh_tokens` (mig. 0004) | sí | sí (auth-refresh) | PASS |
+| POST `/auth/logout` (revoca refresh) | auth | sí | sí (auth-refresh) | PASS |
+| GATE-OPS-001 (`/healthz` liveness) | `health.ts` | sí | sí (health) | PASS |
+| GATE-OPS-002 (`/readyz` DB) | `health.ts` (`SELECT 1`) | sí | sí (health) | PASS |
+| GATE-CI-001 (GitHub Actions) | `.github/workflows/ci.yml` | sí | sí (suites equivalentes verdes) | PASS |
+| GATE-E2E-001 (smoke-api) | `scripts/smoke-api.mjs` | sí | sí (7/7) | PASS |
+| GATE-DEPLOY-001 (Docker build api/web) | Dockerfiles + `.dockerignore` | sí (listos) | — | **BLOCKED (entorno)** |
+
+**Invariantes/NFR verificados por la suite de Fase 7** — VERIFICADO/PASS contra Neon real: **NFR-006** (no secretos versionados; secret-scan exit 0; **secreto Neon rotado**) ✅; **NFR-009** (cabeceras de seguridad helmet `nosniff`; CORS sin wildcard en prod) ✅; **NFR-004** (rate-limit global + estricto auth/control → 429) ✅; **NFR-002/FR-AUTH-010** (access 15m + refresh 7d rotado; reuso de refresh revocado → 401 + revoca árbol; logout revoca; access sin `passwordHash`) ✅; **NFR-036** (logging estructurado redactado + request-id) ✅; **NFR-037** (health/readiness `/healthz`+`/readyz`, 503 degraded) ✅; **NFR-041** (migración aditiva 0004 aplicable; CI con migrate:deploy+seed+test:db:external sobre Postgres efímero) ✅.
+
+> **Desviaciones/limitaciones documentadas (no bloquean PASS de Fase 7):** **GATE-DEPLOY-001 (build de imágenes Docker) = BLOCKED por entorno** (Docker no disponible local; Dockerfiles listos para CI — no FAIL); `/metrics` Prometheus y **tracing distribuido (NFR-038)** **diferidos** (Fase 8; hoy métricas vía logs); `/auth/refresh`, `/healthz`, `/readyz` se documentan como **adición Fase 7** (superset; `openapi.yaml` a reconciliar en Fase 8, NFR-045); **backups/DR y retención Timescale/audit (NFR-019/033/034/035)** diferidos a Fase 8; `apps/web` en **DEMO_MODE** (no consume la API). **Roadmap F0–F7 COMPLETO.** Pendiente (Fase 8, requiere autorización): despliegue productivo real + downlink IoT físico (fila 34, FR-CTRL-008) + proyecciones (38–39, V1).

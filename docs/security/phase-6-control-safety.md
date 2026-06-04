@@ -52,7 +52,7 @@ MQTT downlink productivo, comandos físicos reales, on/off físico, `resolveActi
 ## Higiene de secretos
 
 - **DB:** Neon dev (host enmascarado `ep-lucky-pine-***.neon.tech`, `neondb`). `DATABASE_URL`/connection strings **no trackeados** (`.env` gitignored). Verificado en `docs/audit/phase-6-precheck.md`.
-- **Recordatorio:** rotar la contraseña de Neon que pudo quedar **expuesta en chat**. Aunque no esté en el repo, una credencial que circuló por un canal no controlado debe considerarse comprometida y rotarse (consistente con el principio de mínimo privilegio y rotación de secretos).
+- **Rotación de la credencial Neon: ✅ EJECUTADA en Fase 7.** La contraseña de Neon que circuló por chat fue **invalidada** vía `ALTER ROLE` (la vieja ya no funciona; la nueva vive solo en `packages/db/.env` gitignored). Ver `docs/security/phase-7-secret-rotation.md`. El recordatorio de Fase 6 queda **cerrado**.
 
 ## Referencias
 

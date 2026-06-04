@@ -69,7 +69,7 @@ Todos bajo JWT + `assertDeviceAccess` (tenant-scope device→installation→orga
 5. **Idempotencia depende del cliente:** sin `Idempotency-Key`, reintentos pueden crear acciones distintas (cada una dry-run).
 6. **Superset OpenAPI:** `yaml` pendiente de reconciliar con los shapes implementados (Fase 7).
 7. Warning preexistente de lint (deuda demo, no bloqueante).
-8. **Recordatorio de seguridad:** rotar la contraseña de Neon que pudo quedar expuesta en chat (no está trackeada en el repo, pero conviene rotarla).
+8. **Recordatorio de seguridad:** rotar la contraseña de Neon que pudo quedar expuesta en chat (no está trackeada en el repo, pero conviene rotarla). **— CERRADO: rotada en Fase 7 (`ALTER ROLE`, vieja invalidada); ver `docs/security/phase-7-secret-rotation.md`.**
 
 ## Comandos para reproducir
 ```bash

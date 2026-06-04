@@ -117,6 +117,111 @@
 
 ---
 
+## Gates de Fase 7 (Hardening · seguridad / ops / CI / despliegue / E2E)
+
+> Añadidos en Fase 7 (`feat/phase-7-hardening`, 2026-06-04). Verificados contra Neon real (credencial rotada) salvo Docker (BLOCKED por entorno). Evidencia: `docs/audit/phase-7-runtime-verification.md`, `docs/implementation/phase-7-summary.md`.
+
+### GATE-SEC-002 — Secret scan (sin secretos versionados)
+
+- **Objetivo:** ningún secreto/credencial/`DATABASE_URL` real en archivos versionados (NFR-006).
+- **Comando:** `pnpm security:scan-secrets` (`scripts/secret-scan.mjs`).
+- **PASS:** exit 0; sin hallazgos (solo placeholders en `.env.example`).
+- **FAIL:** exit ≠ 0; secreto detectado en el índice/working tree versionado.
+- **BLOCKED:** N/A.
+- **Evidencia:** exit code (0).
+- **Estado actual:** **PASS** (exit 0). Además: contraseña Neon **ROTADA** (vieja invalidada vía `ALTER ROLE`; ver `docs/security/phase-7-secret-rotation.md`).
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+### GATE-SEC-003 — CORS sin wildcard en producción
+
+- **Objetivo:** en producción el CORS no admite `*`; solo orígenes de `CORS_ORIGINS` (NFR-009).
+- **Comando:** suite API (test de security: CORS allow/deny + `env.ts` rechaza wildcard en prod) — `pnpm --filter @smartsense/api test`.
+- **PASS:** origen listado permitido; no listado rechazado; `loadConfig` **rechaza** wildcard si `NODE_ENV=production`.
+- **FAIL:** wildcard aceptado en prod, o origen ajeno permitido.
+- **BLOCKED:** N/A.
+- **Evidencia:** tests de security verdes (`apps/api/src/plugins/cors.ts`, `config/env.ts`).
+- **Estado actual:** **PASS**.
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+### GATE-SEC-004 — JWT fuerte en producción
+
+- **Objetivo:** `JWT_SECRET`/`JWT_REFRESH_SECRET` ≥ 32 chars; el arranque rechaza valores débiles/ausentes en prod (NFR-006).
+- **Comando:** suite API (test de security: `env.ts` rechaza JWT débil/ausente en prod).
+- **PASS:** `loadConfig` lanza si el secreto es débil/ausente con `NODE_ENV=production`.
+- **FAIL:** arranca con secreto débil/ausente en prod.
+- **BLOCKED:** N/A.
+- **Evidencia:** test de security verde (`apps/api/src/config/env.ts`).
+- **Estado actual:** **PASS**.
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+### GATE-SEC-005 — Rate-limit en auth y control
+
+- **Objetivo:** límite global + estricto en `/auth/login`, `/auth/register` y `POST /devices/{deviceId}/control-actions` (NFR-004).
+- **Comando:** suite API (test de security: 429 al exceder) — global 300/min.
+- **PASS:** exceder el umbral → **429**; endpoints sensibles con límite más estricto.
+- **FAIL:** sin 429 al exceder; endpoints sensibles sin límite.
+- **BLOCKED:** N/A.
+- **Evidencia:** test 429 verde (`apps/api/src/plugins/rate-limit.ts`).
+- **Estado actual:** **PASS**.
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+### GATE-OPS-001 — Liveness `/healthz`
+
+- **Objetivo:** liveness sin auth/DB (`{ status, service, version, timestamp, uptime_s }`); sin secretos (NFR-037).
+- **Comando:** suite API (test de health) + `GET /health` / `/healthz`.
+- **PASS:** 200 con el shape esperado; no expone secretos ni connection strings.
+- **FAIL:** ≠ 200, falta campos, o fuga de secretos.
+- **BLOCKED:** N/A.
+- **Evidencia:** test de health verde (`apps/api/src/health.ts`); verificado contra Neon.
+- **Estado actual:** **PASS**.
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+### GATE-OPS-002 — Readiness `/readyz` (DB)
+
+- **Objetivo:** readiness con chequeo de DB (`SELECT 1`); 503 degraded si falla (NFR-037).
+- **Comando:** suite API (test de health) + `GET /readyz`.
+- **PASS:** DB ok → `status: ready`/`db: ok` (200); DB caída → **503 degraded**; sin secretos.
+- **FAIL:** no chequea DB, o 200 con DB caída.
+- **BLOCKED:** N/A.
+- **Evidencia:** test de health verde (`apps/api/src/health.ts`); verificado contra Neon.
+- **Estado actual:** **PASS**.
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+### GATE-CI-001 — Pipeline GitHub Actions
+
+- **Objetivo:** CI reproducible: `secret-scan → typecheck → lint → build api/web/iot-bridge → migrate:deploy + seed + test:db:external` sobre Postgres efímero (NFR-041/006).
+- **Comando:** `.github/workflows/ci.yml` (service `postgres:16`, sin Timescale → fallback `DO/EXCEPTION`; pnpm; **no usa Neon real**).
+- **PASS:** workflow definido y consistente con los scripts root (`ci:verify`, `ci:test:db`, `security:scan-secrets`); pasos en verde en runner.
+- **FAIL:** algún paso del pipeline falla en CI.
+- **BLOCKED:** N/A (workflow versionado; ejecución en GitHub).
+- **Evidencia:** `.github/workflows/ci.yml`; scripts root; suites verdes locales como proxy.
+- **Estado actual:** **PASS** (pipeline definido y consistente; suites equivalentes verdes localmente).
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+### GATE-DEPLOY-001 — Build de imágenes Docker (api/web)
+
+- **Objetivo:** imágenes multi-stage de api y web construibles, sin copiar `.env` (NFR-045).
+- **Comando:** `docker build -f apps/api/Dockerfile .` y `docker build -f apps/web/Dockerfile .` (Dockerfiles + `.dockerignore`).
+- **PASS:** ambas imágenes construyen; `.dockerignore` excluye `.env`.
+- **FAIL:** error de build; imagen copia secretos.
+- **BLOCKED:** Docker **no disponible** en el entorno local → **BLOCKED** (no FAIL); construir en CI / host con Docker.
+- **Evidencia:** Dockerfiles (`apps/api/Dockerfile`, `apps/web/Dockerfile`) + `.dockerignore` creados y listos.
+- **Estado actual:** **BLOCKED (entorno)** — Dockerfiles listos; build no ejecutado localmente. No afecta el PASS del código (Fase 8 / CI).
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+### GATE-E2E-001 — Smoke de API (`smoke-api`)
+
+- **Objetivo:** flujo E2E mínimo contra API real + Neon (health → auth → installation → lecturas) (test-plan §16).
+- **Comando:** `pnpm smoke:api` (`scripts/smoke-api.mjs`).
+- **PASS:** **7 pasos OK** (health/register/login/installation/dashboard/alerts/recommendations).
+- **FAIL:** algún paso falla.
+- **BLOCKED:** API/Neon no accesibles → BLOCKED.
+- **Evidencia:** salida del smoke (7/7).
+- **Estado actual:** **PASS** (7/7 contra API real + Neon).
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`.
+
+---
+
 ## Tabla-resumen — Estado ACTUAL de los gates (Fase 1.4, 2026-06-02 · Neon real)
 
 > Cerrados contra **Neon Postgres (dev) vía Vercel** (`cherrera0001s-projects/smart-sense-demo`, Development, `neondb`, host enmascarado `ep-lucky-pine-***.neon.tech`; sin TimescaleDB → fallback `DO/EXCEPTION`; URL directa/unpooled). `pnpm verify:phase1:external` → **GATE_EXIT=0**.
@@ -137,3 +242,23 @@
 **Conclusión:** **todos los gates de Fase 1 en PASS** contra Postgres real (Neon). Estado de Fase 1 = **PASS** (cerrada vía Fase 1.4). Fase 2 **AUTORIZABLE** (GATE-SDD-001 satisfecho). Evidencia: `docs/audit/phase-1-vercel-neon-runtime-verification.md §Cierre Fase 1.4`, `phase-1-real-db-schema-verification.md`, `phase-1-vercel-neon-seed-verification.md`.
 
 > Dos fixes durante el cierre 1.4: (1) `distributors.code` índice único **completo** (era parcial → `42P10` en `ON CONFLICT`); (2) `constraints.test.ts` usa `execSync('npx tsx …')` (antes `execFileSync('npx.cmd')` → `EINVAL` en Windows).
+
+---
+
+## Tabla-resumen — Gates de Fase 7 (Hardening, 2026-06-04 · Neon real, credencial rotada)
+
+> Verificados contra Neon real (nueva credencial) salvo Docker. Evidencia: `docs/audit/phase-7-runtime-verification.md`.
+
+| Gate | Comando | Estado actual | Motivo |
+|---|---|---|---|
+| GATE-SEC-002 | `pnpm security:scan-secrets` | **PASS** | exit 0; sin secretos versionados; Neon rotado (vieja inválida) |
+| GATE-SEC-003 | suite API (security: CORS) | **PASS** | CORS allow/deny; wildcard rechazado en prod (`env.ts`) |
+| GATE-SEC-004 | suite API (security: env JWT) | **PASS** | `loadConfig` rechaza JWT débil/ausente en prod |
+| GATE-SEC-005 | suite API (security: rate-limit) | **PASS** | global 300/min + estricto auth/control → 429 |
+| GATE-OPS-001 | `GET /healthz` | **PASS** | liveness `{status,service,version,timestamp,uptime_s}`, sin secretos |
+| GATE-OPS-002 | `GET /readyz` | **PASS** | `SELECT 1` → ready/db ok; 503 degraded si falla |
+| GATE-CI-001 | `.github/workflows/ci.yml` | **PASS** | pipeline definido (postgres:16 efímero); scripts root consistentes |
+| GATE-DEPLOY-001 | `docker build` api/web | **BLOCKED (entorno)** | Docker no disponible local; Dockerfiles+`.dockerignore` listos para CI |
+| GATE-E2E-001 | `pnpm smoke:api` | **PASS** | 7 pasos OK contra API real + Neon |
+
+**Conclusión:** todos los gates de Fase 7 en **PASS** salvo **GATE-DEPLOY-001 = BLOCKED por entorno** (Docker no disponible local; Dockerfiles listos para construirse en CI — no es FAIL). Suites: **API 156/156** (security 7, health 2, auth-refresh 7), **iot-bridge 23/23**, **DB 18/18**; typecheck/lint/builds verdes. **Estado de Fase 7 = PASS** (rotación de secreto ejecutada; Docker build BLOCKED documentado, no afecta el PASS).

@@ -253,16 +253,31 @@
 
 > **Resumen Fase 6:** módulo `control` (9 endpoints **dry-run**) + migración aditiva 0003 + RBAC/tenant/capability/idempotencia/audit ✅ **PASS** contra Neon real (API 140/140, 0 downlink, 0 side-effects, viewer 403, tenant 403, 409 no-controlable). DEMO_MODE intacto (web client preparatorio). Pendiente (fase futura): downlink MQTT + `resolveAction` async (T-F06-02) y UI (T-F06-08). Precondiciones de control real en `docs/security/phase-6-control-safety.md`. **Fase 7 AUTORIZABLE.**
 
-## FASE 7 — Hardening
+## FASE 7 — Hardening (implementada)
 
-| ID | Descripción | Entregable | Dependencias | FR / Spec |
-|---|---|---|---|---|
-| T-F07-01 | Cabeceras seguridad (CSP/HSTS/anti-clickjacking), URLs firmadas de boleta, cookies seguras | endurecimiento web | T-F04-* | NFR-005/009 |
-| T-F07-02 | Rate limiting global + secret-scan/SAST en CI | pipeline endurecido | T-F02-* | NFR-004/006 |
-| T-F07-03 | Logging estructurado (correlation id), métricas y alertas operativas, trazas distribuidas | observabilidad | T-F02-*/T-F03-* | NFR-036/037/038 |
-| T-F07-04 | Backups/DR, retención Timescale/audit, ciclo de vida de boleta | operación de datos | T-F01-* | NFR-019/033/034/035 |
-| T-F07-05 | E2E completo (onboarding/dashboard/control/cross-tenant/offline) + carga (NFR-020/021/022/023) | suites verdes | todas | test-plan §16/§17 |
-| T-F07-06 | Documentación de despliegue (Docker Compose, GitHub Actions) + cierre de matrices (45/45 NFR, INV-1..10 VALIDADO) | docs + matrices | T-F07-01..05 | NFR-045, criterio de cierre |
+> **Estado: ✅ PASS (2026-06-04, `feat/phase-7-hardening`).** Hardening transversal sobre Neon real (credencial **rotada**): seguridad (helmet/cors/rate-limit/env/secret-scan), auth hardening (refresh-token rotation + migración aditiva 0004), logger redactado, health/readiness, CI (GitHub Actions), Dockerfiles, smoke y observabilidad. **No se agregaron features de negocio; `apps/web` sigue DEMO_MODE.** **Tests:** API **156/156** (+security 7, health 2, auth-refresh 7), iot-bridge **23/23**, DB **18/18**; typecheck/build/lint verdes (1 warning preexistente).
+> **Leyenda:** ✅ implementado y verificado en verde · ⛔ BLOCKED por entorno · ⏳ pendiente (fase futura). Detalle: `docs/implementation/phase-7-summary.md`, `docs/audit/phase-7-{precheck,runtime-verification,openapi-implementation-audit}.md`, `docs/security/phase-7-secret-rotation.md`, `docs/observability/phase-7-observability.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F07-00 | **Rotación REAL del secreto Neon** (`ALTER ROLE … WITH PASSWORD`, vieja invalidada; nueva solo en `packages/db/.env` gitignored); verificada con `prisma migrate status` | secreto rotado + doc | T-014-01 | NFR-006, GATE-SEC-002 |
+| ✅ | T-F07-01 | **Secret-scan** `scripts/secret-scan.mjs` + script root `security:scan-secrets` (exit 0; en CI) | scanner + script | T-F02-* | NFR-006, GATE-SEC-002 |
+| ✅ | T-F07-02 | **Cabeceras de seguridad** `@fastify/helmet` (`plugins/security-headers.ts`; `x-content-type-options: nosniff` verificado) | plugin | T-F02-01 | NFR-009, GATE-SEC-003 |
+| ✅ | T-F07-03 | **CORS** `@fastify/cors` (`plugins/cors.ts`, `CORS_ORIGINS`; prod rechaza wildcard) | plugin | T-F02-01 | NFR-009, GATE-SEC-003 |
+| ✅ | T-F07-04 | **Rate-limit** `@fastify/rate-limit` (`plugins/rate-limit.ts`, global 300/min + estricto en `/auth/login\|register` y `POST control-actions`; 429 verificado) | plugin | T-F02-03/04, T-F06-01 | NFR-004, GATE-SEC-005 |
+| ✅ | T-F07-05 | **Hardening de config** `config/env.ts` (`loadConfig` puro; rechaza JWT débil/ausente y CORS wildcard en prod) | config | T-F02-01 | NFR-006, GATE-SEC-004 |
+| ✅ | T-F07-06 | **Logger redactado** `config/logger.ts` (pino, `redact.paths`: authorization/cookie/password/tokens/`DATABASE_URL`/etc.) | logger | T-F02-01 | NFR-036 |
+| ✅ | T-F07-07 | **Auth hardening (refresh-token rotation):** migración aditiva **0004** `refresh_tokens` (jti+token_hash sha256); access 15m + refresh 7d; `POST /auth/refresh` rota; reuso revocado → 401 + revoca árbol; logout revoca; `register`/`login` devuelven `token`+`refresh_token` (shape conservado); access sin `passwordHash` | migración + auth | T-F02-03 | FR-AUTH-010, NFR-002 |
+| ✅ | T-F07-08 | **Health/readiness** `health.ts`: `/health`+`/healthz` (liveness `status/service/version/timestamp/uptime_s`), `/readyz` (`SELECT 1` → ready/db ok; 503 degraded), sin secretos | endpoints ops | T-F02-01, T-F01-* | NFR-037 |
+| ✅ | T-F07-09 | **CI GitHub Actions** `.github/workflows/ci.yml` (postgres:16 efímero sin Timescale; `secret-scan→typecheck→lint→build api/web/iot-bridge→migrate:deploy+seed+test:db:external`; no usa Neon) + scripts `ci:verify`/`ci:test:db` | pipeline | T-F07-01, T-F01-* | NFR-041/006, GATE-CI-001 |
+| ⛔ | T-F07-10 | **Dockerfiles** `apps/api/Dockerfile` + `apps/web/Dockerfile` multi-stage + `.dockerignore` (no copia `.env`) — **build de imágenes BLOCKED por entorno** (Docker no disponible local; listos para CI, no FAIL) | imágenes | T-F07-09 | NFR-045, GATE-DEPLOY-001 |
+| ✅ | T-F07-11 | **Smoke E2E** `scripts/smoke-api.mjs` + script root `smoke:api` (7 pasos OK: health/register/login/installation/dashboard/alerts/recommendations) contra API real + Neon | smoke | T-F07-08, T-F02-*..T-F05-* | test-plan §16, GATE-E2E-001 |
+| ✅ | T-F07-12 | **Observabilidad** `docs/observability/phase-7-observability.md` (logging redactado, request-id `x-request-id`, auditoría append-only, métricas vía logs; `/metrics` Prometheus + tracing OpenTelemetry **diferidos**) | docs | T-F07-06 | NFR-036/037/038 |
+| ✅ | T-F07-13 | **Gates de runtime + matrices** actualizados: `runtime-gates.md` (GATE-SEC-002..005, GATE-OPS-001/002, GATE-CI-001, GATE-DEPLOY-001, GATE-E2E-001), `roadmap.md` (F7 PASS, F0–F7 COMPLETO), `traceability-matrix.md` (cobertura Fase 7) | docs + matrices | T-F07-00..12 | criterio de cierre, NFR-045 |
+| ⏳ | T-F07-14 | **Backups/DR, retención Timescale/audit, ciclo de vida de boleta** — **diferido** (Fase 8 / despliegue productivo) | operación de datos | T-F01-* | NFR-019/033/034/035 |
+| ⏳ | T-F07-15 | **Downlink IoT físico** (canal autenticado por kit, ACK/timeout, rollback, rate-limit reforzado) + `/metrics` Prometheus / tracing + reconciliación final `openapi.yaml` — **diferido** (Fase 8, requiere autorización) | fase futura | T-F06-02 | NFR-045, `phase-6-control-safety.md` |
+
+> **Resumen Fase 7:** rotación real del secreto Neon + plugins de seguridad (helmet/cors/rate-limit) + hardening de `env.ts` + refresh-token rotation (migración 0004) + logger redactado + health/readiness + CI (GitHub Actions) + Dockerfiles + secret-scan + smoke + observabilidad + gates ✅ **PASS** contra Neon real (API 156/156, iot-bridge 23/23, DB 18/18). **GATE-DEPLOY-001 (build de imágenes Docker) = BLOCKED por entorno** (Docker no disponible local; Dockerfiles listos para CI — no FAIL). DEMO_MODE intacto. **Roadmap F0–F7 COMPLETO.** Pendiente (Fase 8, requiere autorización): despliegue productivo real + downlink IoT físico (T-F07-14/15).
 
 ---
 
