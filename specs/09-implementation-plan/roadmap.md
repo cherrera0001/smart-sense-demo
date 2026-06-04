@@ -144,11 +144,11 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 - **Criterio de cierre:** suite `iot` (idempotencia NFR-028, validez NFR-030, rangos NFR-031, doble timestamp NFR-029, reconexión NFR-017) verde; recompute determinista (NFR-032); reportes desde agregados dentro de SLO (NFR-020/023, smoke); OpenAPI telemetría/reportes; matriz filas 20, 23–25, 45 → `EN PROGRESO`/`VALIDADO`.
 - **FR cubiertos:** FR-DASH-001/002, FR-REP-001/002/003/004/005, FR-BILL-004 (tarifa para costeo), base de FR-BRK y FR-PROJ.
 
-## FASE 4 — Dashboard y reportes (frontend)
+## FASE 4 — Dashboard y reportes (backend de lectura agregada · PASS)
 
-> **Estado: 🔓 AUTORIZABLE (2026-06-03)** — Fase 3 cerró en PASS (telemetría ingerida + agregados horarios + latest/range contra Neon); devices/installations (Fase 2) y telemetría/agregados (Fase 3) disponibles. Incluye los endpoints de lectura agregada (`dashboard`, `reports/*`) y el costeo CLP (BillingService/TariffService) aún pendientes. No iniciada aún.
+> **Estado: ✅ PASS / implementada (backend) (2026-06-03, `feat/phase-4-dashboard-reports`)** — Plano **backend** de lectura agregada cerrado sobre Neon real. **6 endpoints** bajo JWT + `assertInstallationAccess(read)`: GET `/installations/{id}/dashboard`, `/reports/{daily,weekly,monthly,last-three-months}` (4) y `/breakdown`. **`BillingService`** (`apps/api/src/modules/billing/`): `getEffectiveTariffForInstallation` (`installation.tariffId` → boleta `confirmed` más reciente → null), `estimateEnergyCostClp` (`Math.round(energy_kwh * energy_price_clp_kwh)` entero CLP, `estimated=true`, **null sin tarifa — BR-031**; solo cargo por energía), `estimateSeriesCostClp`. **Sin migración nueva:** reutiliza `telemetry_readings`, `energy_aggregates`, `devices`, `device_categories`, `installations`, `tariffs`, `electricity_bills`, `distributors`. **Estrategia de datos:** agregados preferidos → fallback a telemetría (sin mezclar fuentes); tiempos en **UTC**. **Shared schemas** `packages/shared/src/schemas/{dashboard,reports,breakdown}.ts`; **web client** `energyApi.getDashboard/getReports*/getBreakdown` **preparatorios** (no usados por la UI; DEMO_MODE sigue `true`, demo intacta). **Tests:** API **92/92** (39 Fase 2 + 17 telemetría + 11 billing + 7 dashboard + 9 reports + 9 breakdown), iot-bridge **23/23**, DB **18/18** contra Neon; typecheck/build/lint verdes. **Desviaciones/limitaciones documentadas:** costeo solo energía (sin cargo fijo/demanda/horario); tiempos UTC (no tz local aún); breakdown solo dispositivos medidos (no NILM); `alerts_pending_count` fijo en 0 (Fase 5); respuestas son **superset** del `openapi.yaml` (extensión contract-first; paths conservados). **Frontend (shell/UI en vivo) y costeo completo: fase posterior.** Detalle: `docs/implementation/phase-4-summary.md`, `docs/audit/phase-4-{precheck,spec-readiness,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-4-dashboard-reports-breakdown.md`. **Fase 5 AUTORIZABLE.**
 
-- **Objetivo:** shell de la app, navegación, dashboard en vivo y reportes con estados UI completos.
+- **Objetivo:** shell de la app, navegación, dashboard en vivo y reportes con estados UI completos. *(El backend de lectura agregada y el costeo CLP se entregaron en este ciclo; el shell/UI en vivo queda como entrega frontend posterior.)*
 - **Entregables:**
   - Layouts `(auth)`, `(onboarding)`, `(app)`; `AppSidebar` (8 módulos), header con `InstallationSwitcher`, guards de ruta y middleware.
   - `/dashboard`: ConsumptionGauge, CostCard, KitStatusIndicator, AlertSummaryCard; WebSocket en vivo (NFR-022).
@@ -161,6 +161,8 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 - **FR cubiertos:** FR-DASH-001..007, FR-REP-001..005, FR-ONB-001..008 (UI), FR-PROF-001..004 (UI), FR-BILL-001..007 (UI), FR-AUTH-001/002 (UI).
 
 ## FASE 5 — Desglose, alertas y recomendaciones
+
+> **Estado: 🔓 AUTORIZABLE (2026-06-03)** — Fase 4 cerró en PASS (dashboard/reports/breakdown backend + `BillingService` contra Neon). El endpoint `/breakdown` ya está implementado (Fase 4); Fase 5 añade el motor de **alertas** (`/alerts`, `/alerts/{id}/review`) y **recomendaciones** (`/recommendations`) con impacto en CLP, `NotificationService` y la UI `/breakdown` + `/alerts`. Al implementarse, el `alerts_pending_count` del dashboard (hoy fijo en 0) pasará a reflejar alertas reales. No iniciada aún.
 
 - **Objetivo:** desglose por device/categoría, motor de alertas y recomendaciones con impacto en CLP.
 - **Entregables:**
@@ -210,7 +212,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 | 1.4 | MER ↔ DB real (Neon vía Vercel) — **PASS** | 1.2 | cierre runtime (GATE-DB-001..004) |
 | 2 | API base — **PASS** (5 módulos, 19 endpoints, 39 tests) | 1 | AUTH, ONB, PROF, SET-002/003 |
 | 3 | IoT + telemetría — **PASS** (3 endpoints, agregación inline, iot-bridge dry-run, API 56/56 · bridge 23/23) | 1,2 | DASH-001 (ingesta), telemetría latest/range |
-| 4 | Frontend dashboard/reportes — **AUTORIZABLE** | 2,3 | DASH, REP, onboarding/boleta UI |
-| 5 | Desglose, alertas, recomendaciones | 3,4 | BRK, ALRT, REC |
+| 4 | Dashboard/reportes/breakdown (backend) — **PASS** (6 endpoints, BillingService, API 92/92) | 2,3 | DASH, REP, BRK, costeo CLP |
+| 5 | Desglose avanzado, alertas, recomendaciones — **AUTORIZABLE** | 3,4 | BRK, ALRT, REC |
 | 6 | Control | 2,3,5 | CTRL, PROF-005 |
 | 7 | Hardening | 1–6 | transversal + NFR |

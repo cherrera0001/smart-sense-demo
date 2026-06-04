@@ -3,7 +3,7 @@
 > Deriva de `specs/_canon.md`, `specs/02-domain/domain-model.md`, `specs/03-data-model/relational-model.md` y `specs/01-requirements/functional-requirements.md`.
 > Contrato formal: `openapi.yaml` (OpenAPI 3.1). Errores: `error-model.md`. AuthZ/AuthN: `auth-and-permissions.md`.
 
-## Estado de implementación (Fases 2–3)
+## Estado de implementación (Fases 2–4)
 
 > **Fase 2 — ✅ PASS (2026-06-02, `feat/phase-2-api-base`).** Implementados en `apps/api` (Fastify 5) y verificados con 39/39 tests contra Neon real: **19 endpoints** de los grupos **Auth** (4), **Organizations** (3), **Installations** (4), **Devices** (4) y **Onboarding** (4). Detalle y auditoría OpenAPI ↔ código 1:1: `docs/audit/phase-2-openapi-implementation-audit.md` y `docs/implementation/phase-2-summary.md`.
 > **Fase 3 — ✅ PASS (2026-06-03, `feat/phase-3-iot-telemetry`).** Implementados y verificados (API 56/56 contra Neon real; 17 tests de telemetría) los **3 endpoints de telemetría**, todos bajo JWT:
@@ -12,8 +12,15 @@
 > - **GET `/installations/{installationId}/telemetry/range`** — rango `[from,to]` con `device_id?` y `limit` (default 500, max 5000); 422 `from>to`.
 >
 >   **Sin migración nueva** (reutiliza `telemetry_readings`/`energy_aggregates` de Fase 1). Detalle: `docs/implementation/phase-3-summary.md`, `docs/audit/phase-3-telemetry-openapi-audit.md`.
-> **Diferidos (Fase 4+):** Dashboard, Reports y costeo CLP (Fase 4); Breakdown, Alerts, Recommendations (Fase 5); Control (Fase 6); Bills (Fase 4). Estos grupos están en el contrato pero **aún no implementados**.
-> **Desviaciones documentadas:** (Fase 2) password con bcryptjs (12 rounds) en vez de Argon2id del canon; JWT único a 7d (refresh rotado + throttling → Fase 7). (Fase 3) `event_hash` usa `device_id` (no `kit_qr`/`device_ref`); telemetría no audita (volumen); agregación inline sin `cost_clp`; device auth = JWT de usuario (API key/kit-scope → Fase 7); MQTT productivo fuera de alcance (`iot-bridge` en dry-run).
+> **Fase 4 — ✅ PASS (backend) (2026-06-03, `feat/phase-4-dashboard-reports`).** Implementados y verificados (API **92/92** contra Neon real; 11 billing + 7 dashboard + 9 reports + 9 breakdown) los **6 endpoints de lectura agregada**, todos bajo JWT + `assertInstallationAccess(read)`:
+> - **GET `/installations/{id}/dashboard`** — `current_power_w`, `today/month_energy_kwh`, `today/month_cost_clp`, `comparison{previous_period_energy_kwh,delta_percent}`, `latest_reading_timestamp`, `device_count`, `alerts_pending_count=0` (literal, Fase 5), `data_status` (live/stale>15min/empty).
+> - **GET `/installations/{id}/reports/{daily,weekly,monthly,last-three-months}`** — `points[{bucket_start,energy_kwh,cost_clp,peak_power_w}]` (buckets vacíos incluidos), `totals` (derivados de `points` → cuadran), `data_status` (complete/partial/empty).
+> - **GET `/installations/{id}/breakdown?from&to&group_by`** — `group_by` device(default)/category; rango default 7 días; `items[{id,name,category,energy_kwh,cost_clp,percentage}]` (solo devices medidos, `percentage` suma ~100), `total_energy_kwh`/`total_cost_clp`, `data_status`.
+> - **`BillingService`** (`apps/api/src/modules/billing/`): tarifa efectiva (`installation.tariffId` → boleta `confirmed` más reciente → null) + `estimateEnergyCostClp` (`Math.round(energy_kwh * energy_price_clp_kwh)` entero CLP; **null sin tarifa — BR-031**; solo cargo por energía).
+>
+>   **Sin migración nueva** (reutiliza `telemetry_readings`/`energy_aggregates`/`devices`/`device_categories`/`installations`/`tariffs`/`electricity_bills`/`distributors`; agregados preferidos → fallback telemetría, sin mezclar fuentes; tiempos UTC). **Nota de superset:** las respuestas de dashboard/reports/breakdown son **más ricas que el shape original del `openapi.yaml`** — los **paths se conservan 1:1**, los shapes implementados son un **superset** (extensión contract-first; el `yaml` se reconcilia en Fase 7, no se reescribe ahora). Detalle: `docs/implementation/phase-4-summary.md`, `docs/audit/phase-4-{spec-readiness,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-4-dashboard-reports-breakdown.md`.
+> **Diferidos (Fase 5+):** Alerts, Recommendations y desglose UI (Fase 5); Control (Fase 6); Bills CRUD/UI y proyecciones (fase posterior). Estos grupos están en el contrato pero **aún no implementados**. El **frontend** (shell/UI en vivo de dashboard/reports/breakdown) es entrega posterior; la demo sigue bajo DEMO_MODE (web client `energyApi.*` preparatorio, no usado por la UI).
+> **Desviaciones documentadas:** (Fase 2) password con bcryptjs (12 rounds) en vez de Argon2id del canon; JWT único a 7d (refresh rotado + throttling → Fase 7). (Fase 3) `event_hash` usa `device_id` (no `kit_qr`/`device_ref`); telemetría no audita (volumen); agregación inline sin `cost_clp`; device auth = JWT de usuario (API key/kit-scope → Fase 7); MQTT productivo fuera de alcance (`iot-bridge` en dry-run). (Fase 4) costeo **solo energía** (sin cargo fijo/demanda/punta-valle/horario); tiempos **UTC** (tz local → fase posterior); breakdown solo dispositivos medidos (no NILM); `alerts_pending_count` fijo en 0 (Fase 5); respuestas **superset** del `openapi.yaml`.
 
 ## 1. Estilo y principios
 

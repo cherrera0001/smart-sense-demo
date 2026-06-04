@@ -188,17 +188,30 @@
 
 > **Resumen Fase 3:** ingestión idempotente + lectura (latest/range) + agregación horaria inline + `iot-bridge` dry-run ✅, verificado contra Neon real (API 56/56, bridge 23/23, DB 18/18). Diferidos a Fase 4+: costeo CLP (T-F03-06) y reportes (T-F03-07). MQTT productivo y worker de agregación real: fase posterior. **Fase 3 cerrada en PASS; Fase 4 AUTORIZABLE.**
 
-## FASE 4 — Frontend dashboard y reportes
+## FASE 4 — Dashboard / reportes / breakdown (backend) + frontend
 
-| ID | Descripción | Entregable | Dependencias | FR / Spec |
-|---|---|---|---|---|
-| T-F04-01 | Layouts `(auth)`/`(onboarding)`/`(app)`, AppSidebar, header + InstallationSwitcher, middleware/guards | shell | T-F02-* | routes.md |
-| T-F04-02 | Providers React Query + Zustand (instalación activa en estado, no URL) | providers | T-F04-01 | routes.md §1 |
-| T-F04-03 | Estados transversales: Skeleton, EmptyState, ErrorState, OfflineBanner | componentes | T-F04-02 | NFR-018, FR-DASH-007 |
-| T-F04-04 | `/dashboard`: ConsumptionGauge, CostCard, KitStatusIndicator, AlertSummaryCard + WebSocket vivo | página | T-F04-03, T-F03-* | FR-DASH-001..007, NFR-022 |
-| T-F04-05 | `/reports`: ReportChart, TimeRangeSelector, MetricToggle | página | T-F04-03, T-F03-07 | FR-REP-001..005 |
-| T-F04-06 | UI onboarding: QRScanner, SegmentSelector, OnboardingStepper, ProfileForm*, BillUploader, BillDataForm, DistributorSelect/TariffForm | páginas onboarding | T-F04-03, T-F02-07 | FR-ONB/PROF/BILL |
-| T-F04-07 | RTL estados (loading/empty/error/offline) + e2e dashboard/onboarding + Lighthouse smoke | suite verde | T-F04-04..06 | NFR-018/022/024 |
+> **Estado backend: ✅ PASS (2026-06-03, `feat/phase-4-dashboard-reports`).** **6 endpoints** de lectura agregada bajo JWT + `assertInstallationAccess(read)` + `BillingService` (costeo CLP solo energía, BR-031), sobre Neon real. **Sin migración nueva** (reutiliza `telemetry_readings`/`energy_aggregates`/`devices`/`device_categories`/`installations`/`tariffs`/`electricity_bills`/`distributors`). **Tests:** API **92/92** (39 Fase 2 + 17 telemetría + 11 billing + 7 dashboard + 9 reports + 9 breakdown), iot-bridge **23/23**, DB **18/18**.
+> **Leyenda:** ✅ implementado y verificado en verde · ⏳ pendiente (entrega frontend posterior).
+> **Desviaciones/limitaciones documentadas:** costeo solo energía (sin cargo fijo/demanda/horario); tiempos **UTC** (no tz local aún); breakdown solo dispositivos medidos (no NILM); `alerts_pending_count` fijo 0 (Fase 5); respuestas **superset** del `openapi.yaml` (extensión contract-first; paths conservados). Detalle: `docs/implementation/phase-4-summary.md`, `docs/audit/phase-4-{spec-readiness,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-4-dashboard-reports-breakdown.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F04-B1 | `BillingService` (`apps/api/src/modules/billing/`): `getEffectiveTariffForInstallation` (`installation.tariffId` → boleta `confirmed` más reciente → null), `estimateEnergyCostClp` (`Math.round(energy_kwh * energy_price_clp_kwh)` entero CLP, `estimated=true`, **null sin tarifa — BR-031**; solo energía), `estimateSeriesCostClp` (11 tests) | servicio de costeo | T-F03-05 | INV-4, BR-031, FR-DASH-003, FR-REP-* |
+| ✅ | T-F04-B2 | GET `/installations/{id}/dashboard` (`read`): `current_power_w`, `today/month_energy_kwh`, `today/month_cost_clp`, `comparison{previous_period_energy_kwh,delta_percent}`, `latest_reading_timestamp`, `device_count`, `alerts_pending_count=0` (literal), `data_status` (live/stale>15min/empty) (7 tests) | endpoint | T-F04-B1, T-F03-05 | FR-DASH-001..007 |
+| ✅ | T-F04-B3 | GET `/installations/{id}/reports/{daily,weekly,monthly,last-three-months}` (`read`): `points[{bucket_start,energy_kwh,cost_clp,peak_power_w}]` (buckets vacíos incluidos), `totals` (derivados de points → cuadran), `data_status` (complete/partial/empty) (9 tests) | endpoints | T-F04-B1, T-F03-05 | FR-REP-001..004 |
+| ✅ | T-F04-B4 | GET `/installations/{id}/breakdown?from&to&group_by` (`read`): `group_by` device(default)/category; rango default 7 días; `items[{id,name,category,energy_kwh,cost_clp,percentage}]` (solo devices medidos, no NILM), `total_energy_kwh`/`total_cost_clp`, `data_status`; percentage=energy/total*100 (~100) | endpoint | T-F04-B1, T-F03-05 | FR-BRK-001..005 |
+| ✅ | T-F04-B5 | Estrategia de datos común: agregados preferidos → fallback `telemetry_readings` (SUM/1000, MAX), sin mezclar fuentes; tiempos UTC | lógica de cómputo | T-F04-B2..B4 | NFR-032 |
+| ✅ | T-F04-B6 | Shared schemas `packages/shared/src/schemas/{dashboard,reports,breakdown}.ts`; web client `energyApi.getDashboard/getReports*/getBreakdown` **preparatorios** (no usados por UI; DEMO_MODE intacto) | contratos + client | T-F04-B2..B4 | 04-api |
+| ✅ | T-F04-B7 | Suite verde contra Neon: API **92/92** (totals cuadran, percentages ~100, cost null sin tarifa, empty states, **0 side-effects** alerts/recs/control, tenant 403); auditoría OpenAPI ↔ código (paths 1:1, shapes superset) manual | suites + `phase-4-openapi-implementation-audit.md` | T-F04-B1..B6 | test-plan §3/§5 |
+| ⏳ | T-F04-01 | Layouts `(auth)`/`(onboarding)`/`(app)`, AppSidebar, header + InstallationSwitcher, middleware/guards | shell | T-F02-* | routes.md |
+| ⏳ | T-F04-02 | Providers React Query + Zustand (instalación activa en estado, no URL) | providers | T-F04-01 | routes.md §1 |
+| ⏳ | T-F04-03 | Estados transversales: Skeleton, EmptyState, ErrorState, OfflineBanner | componentes | T-F04-02 | NFR-018, FR-DASH-007 |
+| ⏳ | T-F04-04 | `/dashboard`: ConsumptionGauge, CostCard, KitStatusIndicator, AlertSummaryCard + WebSocket vivo (consume T-F04-B2) | página | T-F04-03, T-F04-B2 | FR-DASH-001..007, NFR-022 |
+| ⏳ | T-F04-05 | `/reports`: ReportChart, TimeRangeSelector, MetricToggle (consume T-F04-B3) | página | T-F04-03, T-F04-B3 | FR-REP-001..005 |
+| ⏳ | T-F04-06 | UI onboarding: QRScanner, SegmentSelector, OnboardingStepper, ProfileForm*, BillUploader, BillDataForm, DistributorSelect/TariffForm | páginas onboarding | T-F04-03, T-F02-07 | FR-ONB/PROF/BILL |
+| ⏳ | T-F04-07 | RTL estados (loading/empty/error/offline) + e2e dashboard/onboarding + Lighthouse smoke | suite verde | T-F04-04..06 | NFR-018/022/024 |
+
+> **Resumen Fase 4:** backend de lectura agregada (dashboard/reports/breakdown) + `BillingService` (costeo CLP solo energía, BR-031) ✅ **PASS** contra Neon real (API 92/92, sin migración, 0 side-effects, tenant 403, empty states, totals cuadran, percentages ~100, cost null sin tarifa). DEMO_MODE intacto (web client preparatorio). Pendiente (entrega frontend posterior): shell/UI en vivo (T-F04-01..07). **Fase 5 AUTORIZABLE.**
 
 ## FASE 5 — Desglose, alertas y recomendaciones
 
