@@ -21,7 +21,7 @@ declare module 'fastify' {
 export async function authPlugin(app: FastifyInstance): Promise<void> {
   await app.register(fastifyJwt, {
     secret: config.JWT_SECRET,
-    sign: { expiresIn: config.JWT_EXPIRES_IN },
+    sign: { expiresIn: config.JWT_ACCESS_EXPIRES_IN },
   });
 
   app.decorate('authenticate', async (req: FastifyRequest, _reply: FastifyReply) => {

@@ -29,8 +29,15 @@ export async function errorHandlerPlugin(app: FastifyInstance): Promise<void> {
       }
     }
 
-    // Errores de @fastify/jwt u otros con statusCode 401.
+    // Rate limit (@fastify/rate-limit).
     const status = (err as { statusCode?: number }).statusCode;
+    if (status === 429 || (err as { code?: string }).code === 'FST_ERR_RATE_LIMIT') {
+      return reply
+        .code(429)
+        .send({ code: 'RATE_LIMITED', message: 'Demasiadas solicitudes, intenta más tarde', traceId });
+    }
+
+    // Errores de @fastify/jwt u otros con statusCode 401.
     if (status === 401) {
       return reply.code(401).send({ code: 'UNAUTHORIZED', message: 'No autenticado', traceId });
     }
