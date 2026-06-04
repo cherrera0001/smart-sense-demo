@@ -1,0 +1,109 @@
+name: CI
+
+# Pipeline de integración continua (Fase 7 — Hardening/DevSecOps).
+#
+# Notas importantes:
+#  - El service de Postgres es `postgres:16` SIN la extensión TimescaleDB. La migración
+#    0001 crea la hypertable dentro de un bloque DO/EXCEPTION que TOLERA el fallback
+#    (si Timescale no está, telemetry_readings queda como tabla normal). Por eso los
+#    tests de DB corren igual contra este Postgres estándar.
+#  - NO se usa Neon real en CI: DATABASE_URL apunta al service local. Las credenciales
+#    de producción NUNCA deben exponerse aquí.
+#  - Los tests de DB usan SMARTSENSE_DB_TEST_MODE=external (sin Testcontainers/Docker)
+#    apuntando al service de Postgres, con SMARTSENSE_DB_ALLOW_UNSAFE=1 (DB efímera de CI).
+#  - Los tests de API que requieren DB pueden ejecutarse igualmente contra este mismo
+#    Postgres exportando DATABASE_URL antes de `pnpm -r test` (no habilitado por defecto).
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: lint · typecheck · build · secret-scan · db-tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: smartsense
+          POSTGRES_PASSWORD: smartsense_ci
+          POSTGRES_DB: smartsense_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smartsense -d smartsense_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # DB efímera de CI (no es Neon, no es producción).
+      DATABASE_URL: postgresql://smartsense:smartsense_ci@localhost:5432/smartsense_test?schema=public
+      DIRECT_URL: postgresql://smartsense:smartsense_ci@localhost:5432/smartsense_test?schema=public
+      SMARTSENSE_DB_TEST_MODE: external
+      SMARTSENSE_DB_ALLOW_UNSAFE: '1'
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Secret scan (archivos versionados)
+        run: pnpm security:scan-secrets
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Typecheck (workspace)
+        run: pnpm -r --if-present typecheck
+
+      - name: Lint (workspace)
+        run: pnpm -r --if-present lint
+
+      - name: Build API
+        run: pnpm build:api
+
+      - name: Build Web
+        run: pnpm build:web
+
+      - name: Build iot-bridge
+        run: pnpm --filter @smartsense/iot-bridge --if-present build
+
+      - name: Apply migrations + seed (Postgres del service)
+        run: |
+          pnpm db:migrate:deploy
+          pnpm db:seed
+
+      - name: DB tests (external — contra Postgres del service)
+        run: pnpm test:db:external
+
+      # Opcional: tests de API contra el mismo Postgres. Descomentar si se requiere.
+      # - name: API tests (con DB)
+      #   env:
+      #     JWT_SECRET: ci_only_jwt_secret_min_32_characters_xx
+      #     JWT_REFRESH_SECRET: ci_only_refresh_secret_min_32_chars_xx
+      #   run: pnpm --filter @smartsense/api test

@@ -1,0 +1,48 @@
+# .dockerignore (raíz) — reduce el contexto de build y evita filtrar secretos/artefactos.
+
+# Dependencias y artefactos de build (se regeneran dentro de la imagen)
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+packages/db/src/generated
+
+# Control de versiones / metadatos
+.git
+.gitignore
+.github
+
+# Secretos y entornos locales — NUNCA copiar al contexto.
+# Se permite explícitamente *.env.example como plantilla.
+**/.env
+**/.env.*
+!**/.env.example
+
+# Tests, evidencia y reportes
+test-results
+**/test-results
+**/playwright-report
+screenshots
+**/screenshots
+coverage
+**/coverage
+
+# Logs
+*.log
+**/*.log
+
+# PWA generados por next-pwa (build output)
+apps/web/public/sw.js*
+apps/web/public/workbox-*.js
+apps/web/public/fallback-*.js
+
+# Misc OS / IDE
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+.vercel
+
+# Documentación (opcional: no se necesita dentro de las imágenes)
+docs

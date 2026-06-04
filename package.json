@@ -27,7 +27,11 @@
     "db:studio": "pnpm --filter @smartsense/db studio",
     "verify:phase1": "pnpm db:generate && pnpm db:migrate && pnpm db:seed && pnpm test:db && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api",
     "verify:phase1:docker": "pnpm db:generate && pnpm db:migrate && pnpm db:seed && pnpm test:db:docker && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api",
-    "verify:phase1:external": "pnpm db:generate && pnpm db:migrate:deploy && pnpm db:seed && pnpm test:db:external && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api"
+    "verify:phase1:external": "pnpm db:generate && pnpm db:migrate:deploy && pnpm db:seed && pnpm test:db:external && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api",
+    "security:scan-secrets": "node scripts/secret-scan.mjs",
+    "smoke:api": "node scripts/smoke-api.mjs",
+    "ci:verify": "pnpm install --frozen-lockfile=false && pnpm -r --if-present typecheck && pnpm -r --if-present lint && pnpm build:api && pnpm build:web && pnpm security:scan-secrets",
+    "ci:test:db": "pnpm db:generate && pnpm test:db"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
