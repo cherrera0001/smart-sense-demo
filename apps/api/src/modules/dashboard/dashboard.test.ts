@@ -198,3 +198,28 @@ describe('dashboard — data_status stale', () => {
     expect(res.json().data_status).toBe('stale');
   });
 });
+
+describe('dashboard — alerts_pending_count (Fase 5, real)', () => {
+  it('cuenta solo alertas open; review/dismiss no cuentan; leer no crea alertas', async () => {
+    const inst = await createInstallationForUser(prisma, owner.organizationId);
+
+    expect((await getDashboard(inst.id, owner.token)).json().alerts_pending_count).toBe(0);
+
+    await prisma.alert.create({
+      data: { installationId: inst.id, type: 'over_budget', severity: 'warning', status: 'open', message: 'a1' },
+    });
+    const a2 = await prisma.alert.create({
+      data: { installationId: inst.id, type: 'high_device', severity: 'warning', status: 'open', message: 'a2' },
+    });
+    expect((await getDashboard(inst.id, owner.token)).json().alerts_pending_count).toBe(2);
+
+    await prisma.alert.update({ where: { id: a2.id }, data: { status: 'reviewed' } });
+    expect((await getDashboard(inst.id, owner.token)).json().alerts_pending_count).toBe(1);
+
+    // Leer el dashboard no crea alertas.
+    const before = await prisma.alert.count({ where: { installationId: inst.id } });
+    await getDashboard(inst.id, owner.token);
+    const after = await prisma.alert.count({ where: { installationId: inst.id } });
+    expect(after).toBe(before);
+  });
+});

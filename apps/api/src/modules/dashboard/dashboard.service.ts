@@ -7,7 +7,7 @@
  *
  * REGLAS DURAS:
  *  - Costo CLP SIEMPRE vía BillingService (BR-030/BR-031). Sin tarifa → null. No se inventa.
- *  - alerts_pending_count es literal 0: alerts es Fase 5 (NO se consultan).
+ *  - alerts_pending_count: conteo real de alertas status=open (Fase 5). Solo lectura.
  *
  * ESTRATEGIA DE ENERGÍA (preferencia agregados → fallback telemetría):
  *  Para un rango [from, to) se prefiere SUM(energyKwh) de `energy_aggregates` con
@@ -98,7 +98,7 @@ export async function getDashboard(
   const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
   const monthStart = utcMonthStart(now);
 
-  const [latest, deviceCount, todayEnergyKwh, monthEnergyKwh, prevEnergyKwh] =
+  const [latest, deviceCount, todayEnergyKwh, monthEnergyKwh, prevEnergyKwh, alertsPending] =
     await Promise.all([
       prisma.telemetryReading.findFirst({
         where: { installationId },
@@ -110,6 +110,8 @@ export async function getDashboard(
       // Mes: [primer día 00:00, ahora]. Se usa `now` como cota superior exclusiva.
       energyForRange(prisma, installationId, monthStart, now),
       energyForRange(prisma, installationId, yesterdayStart, todayStart),
+      // Fase 5: conteo real de alertas pendientes (status open). Solo lectura, no evalúa/crea.
+      prisma.alert.count({ where: { installationId, status: 'open' } }),
     ]);
 
   // Costos vía BillingService (null si no hay tarifa válida; nunca se inventa).
@@ -146,7 +148,7 @@ export async function getDashboard(
     },
     latest_reading_timestamp: latest ? latest.sourceTimestamp.toISOString() : null,
     device_count: deviceCount,
-    alerts_pending_count: 0,
+    alerts_pending_count: alertsPending,
     data_status: dataStatus,
   };
 }

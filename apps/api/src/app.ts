@@ -13,6 +13,8 @@ import { telemetryRoutes } from './modules/telemetry/telemetry.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { breakdownRoutes } from './modules/breakdown/breakdown.routes.js';
+import { alertsRoutes } from './modules/alerts/alerts.routes.js';
+import { recommendationsRoutes } from './modules/recommendations/recommendations.routes.js';
 
 export interface BuildAppOptions {
   logger?: boolean;
@@ -42,6 +44,8 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(dashboardRoutes);
   await app.register(reportsRoutes);
   await app.register(breakdownRoutes);
+  await app.register(alertsRoutes);
+  await app.register(recommendationsRoutes);
 
   return app;
 }
