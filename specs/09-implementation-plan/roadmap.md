@@ -162,7 +162,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 
 ## FASE 5 — Desglose, alertas y recomendaciones
 
-> **Estado: 🔓 AUTORIZABLE (2026-06-03)** — Fase 4 cerró en PASS (dashboard/reports/breakdown backend + `BillingService` contra Neon). El endpoint `/breakdown` ya está implementado (Fase 4); Fase 5 añade el motor de **alertas** (`/alerts`, `/alerts/{id}/review`) y **recomendaciones** (`/recommendations`) con impacto en CLP, `NotificationService` y la UI `/breakdown` + `/alerts`. Al implementarse, el `alerts_pending_count` del dashboard (hoy fijo en 0) pasará a reflejar alertas reales. No iniciada aún.
+> **Estado: ✅ PASS / implementada (backend) (2026-06-04, `feat/phase-5-alerts-recommendations`)** — Motor de **alertas** y **recomendaciones** backend cerrado sobre Neon real. **3 endpoints** bajo JWT: GET `/installations/{id}/alerts` (query status/severity/from/to/limit; default `status=open`; **lectura pura**), PATCH `/alerts/{id}/review` (RBAC `ROLES.operate`, viewer → 403; `reviewed_at`/`reviewedBy`; `audit_log` `'alert.review'`; no borra), GET `/installations/{id}/recommendations` (status active/dismissed/applied/all; default `active`). **`AlertEvaluationService.evaluateInstallationAlerts`** (función **interna**, scheduler = fase posterior): **5 reglas basadas en evidencia** con dedup (ventana 24h) — `high_consumption`/`projection_risk`→`over_budget` (subtype), `device_high`→`high_device`, `offline`, `anomaly`; sin evidencia/baseline → no alerta; UTC; **0 side-effects** (no crea recommendations/control_actions). **`RecommendationService.generateForAlert`**: 1 recomendación por alerta (`source='alert'`); `estimated_saving_kwh`=10% del exceso observado (null si no reducible); `estimated_saving_clp` vía `BillingService` (null sin tarifa, **BR-031**); textos sin "garantizado". **`DashboardService.alerts_pending_count`** ahora **real** (count `alerts status=open`; antes literal 0). **Migración aditiva 0002** (`recommendations.type` text + `estimated_saving_kwh` numeric(14,4) + CHECK no-neg; no altera enums ni datos). **Reconciliación canon=persistencia** (alert.type 4 canónicos + subtype en `context`; recommendation status `new`↔`active`, priority int↔enum). **Shared:** `alerts.ts` extendido + `recommendations.ts` nuevo + `dashboard.ts`. **Web client** `insightsApi.getAlerts/reviewAlert/getRecommendations` **preparatorios** (DEMO_MODE intacto). **Tests:** API **114/114** (+ alerts 13, recommendations 8, dashboard regresión), iot-bridge **23/23**, DB **18/18**. **Limitaciones:** sin scheduler real; UTC; sin `estimatedImpactClp` en alertas; respuestas **superset** del `openapi.yaml`. **`NotificationService` y UI productiva (`/alerts`, `/breakdown`): fase posterior.** Detalle: `docs/implementation/phase-5-summary.md`, `docs/audit/phase-5-{precheck,spec-readiness,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-5-alerts-recommendations.md`. **Fase 6 AUTORIZABLE.**
 
 - **Objetivo:** desglose por device/categoría, motor de alertas y recomendaciones con impacto en CLP.
 - **Entregables:**
@@ -176,6 +176,8 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 - **FR cubiertos:** FR-BRK-001..006, FR-ALRT-001..006, FR-REC-001..005, FR-DASH-006.
 
 ## FASE 6 — Control
+
+> **Estado: 🔓 AUTORIZABLE (2026-06-04)** — Fase 5 cerró en PASS (alertas/recomendaciones backend contra Neon: 3 endpoints, motor de 5 reglas, dashboard `alerts_pending_count` real, migración aditiva 0002, API 114/114). Fase 6 añade el **control remoto** (`/devices/{id}/control-actions`, `/control-state`, `/control-schedules`, `/consumption-limits`) con downlink MQTT, auditoría por acción y RBAC (viewer → 403 + rejected auditado). No iniciada aún.
 
 - **Objetivo:** control puntual on/off, programaciones, límites de consumo, con auditoría y validación de permisos.
 - **Entregables:**
@@ -213,6 +215,6 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 | 2 | API base — **PASS** (5 módulos, 19 endpoints, 39 tests) | 1 | AUTH, ONB, PROF, SET-002/003 |
 | 3 | IoT + telemetría — **PASS** (3 endpoints, agregación inline, iot-bridge dry-run, API 56/56 · bridge 23/23) | 1,2 | DASH-001 (ingesta), telemetría latest/range |
 | 4 | Dashboard/reportes/breakdown (backend) — **PASS** (6 endpoints, BillingService, API 92/92) | 2,3 | DASH, REP, BRK, costeo CLP |
-| 5 | Desglose avanzado, alertas, recomendaciones — **AUTORIZABLE** | 3,4 | BRK, ALRT, REC |
-| 6 | Control | 2,3,5 | CTRL, PROF-005 |
+| 5 | Alertas y recomendaciones (backend) — **PASS** (3 endpoints, 5 reglas, migración 0002, API 114/114) | 3,4 | ALRT, REC, DASH-006 |
+| 6 | Control — **AUTORIZABLE** | 2,3,5 | CTRL, PROF-005 |
 | 7 | Hardening | 1–6 | transversal + NFR |

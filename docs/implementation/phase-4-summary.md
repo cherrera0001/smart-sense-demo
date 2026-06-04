@@ -69,7 +69,7 @@
 1. **Costeo solo energía** (BR-031): cargo fijo/demanda/horario diferidos.
 2. **Tiempos en UTC:** buckets de día/mes en UTC, no en tz de la instalación.
 3. **Breakdown solo dispositivos medidos:** no NILM; el total puede ser menor al consumo real.
-4. **`alerts_pending_count = 0` literal:** Fase 5 no implementada.
+4. **`alerts_pending_count = 0` literal:** Fase 5 no implementada. **Actualización Fase 5 (2026-06-04):** este campo dejó de ser literal 0 y pasó a ser **conteo real** de alertas `status=open` (`DashboardService`); ver `docs/implementation/phase-5-summary.md`.
 5. **Superset de OpenAPI:** las respuestas son más ricas que el shape original del `openapi.yaml`; se documenta como **extensión contract-first** (paths conservados, shapes superset). No se reescribe el `yaml`.
 6. **Sin migración nueva:** reutiliza `telemetry_readings`, `energy_aggregates`, `devices`, `device_categories`, `installations`, `tariffs`, `electricity_bills`, `distributors`.
 

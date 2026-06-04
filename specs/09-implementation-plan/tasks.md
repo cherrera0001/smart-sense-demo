@@ -213,16 +213,25 @@
 
 > **Resumen Fase 4:** backend de lectura agregada (dashboard/reports/breakdown) + `BillingService` (costeo CLP solo energía, BR-031) ✅ **PASS** contra Neon real (API 92/92, sin migración, 0 side-effects, tenant 403, empty states, totals cuadran, percentages ~100, cost null sin tarifa). DEMO_MODE intacto (web client preparatorio). Pendiente (entrega frontend posterior): shell/UI en vivo (T-F04-01..07). **Fase 5 AUTORIZABLE.**
 
-## FASE 5 — Desglose, alertas y recomendaciones
+## FASE 5 — Alertas y recomendaciones (backend implementado)
 
-| ID | Descripción | Entregable | Dependencias | FR / Spec |
-|---|---|---|---|---|
-| T-F05-01 | BreakdownService + `/breakdown?groupBy=device\|category` (total=Σitems, %, ranking) | endpoint | T-F03-05 | FR-BRK-001..005 |
-| T-F05-02 | AlertService (raise/dedup/list/review) + `/alerts` y `/alerts/{id}/review` | endpoints | T-F03-* | FR-ALRT-001..006 |
-| T-F05-03 | RecommendationService + `/recommendations` (CLP solo con tarifa, apply/dismiss) | endpoint | T-F05-02, T-F03-06 | FR-REC-001..005 |
-| T-F05-04 | NotificationService (in_app/email/push) | servicio | T-F05-02 | FR-SET-005 |
-| T-F05-05 | Frontend `/breakdown` (DeviceBreakdownChart) y `/alerts` (AlertList, SeverityBadge, AlertFilters, RecommendationCard) | páginas | T-F04-*, T-F05-01..03 | FR-BRK/ALRT/REC |
-| T-F05-06 | Tests unit/integ/ui (dedup, orden severidad, total=Σitems, review baja contador) | suite verde | T-F05-01..05 | test-plan §11/§12/§13 |
+> **Estado backend: ✅ PASS (2026-06-04, `feat/phase-5-alerts-recommendations`).** **3 endpoints** (alerts list/review, recommendations list) bajo JWT + tenant-scope, motor interno de **5 reglas** de alertas con dedup, derivación de recomendaciones desde alertas (BR-031), `alerts_pending_count` real en dashboard y **migración aditiva 0002**, sobre Neon real. **Tests:** API **114/114** (+ alerts 13, recommendations 8, dashboard regresión), iot-bridge **23/23**, DB **18/18**.
+> **Leyenda:** ✅ implementado y verificado en verde · ⏳ pendiente (entrega frontend/notificaciones posterior).
+> **Reconciliación canon=persistencia:** alert.type 4 canónicos + subtype en `context`; `detected_at`=`created_at`, `metadata`=`context`; recommendation status `new`↔`active`, priority int↔enum, `type`/`estimated_saving_kwh` vía migración 0002. **Desviaciones/limitaciones documentadas:** sin scheduler real (evaluación es función interna); UTC; sin `estimatedImpactClp` en alertas; respuestas **superset** del `openapi.yaml`. Detalle: `docs/implementation/phase-5-summary.md`, `docs/audit/phase-5-{precheck,spec-readiness,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-5-alerts-recommendations.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F05-00 | Migración **aditiva 0002** (`recommendations.type` text + `estimated_saving_kwh` numeric(14,4) + CHECK no-neg; no altera enums ni datos); `migrate deploy` OK contra Neon | migración SQL versionada | T-F01-15 | NFR-041; relational-model §Notas Fase 5 |
+| ✅ | T-F05-01 | `AlertEvaluationService.evaluateInstallationAlerts` (**función interna**): 5 reglas basadas en evidencia con dedup (ventana 24h: skip si existe `open` igual installation+device+type) — `high_consumption`/`projection_risk`→`over_budget`(subtype), `device_high`→`high_device`, `offline`, `anomaly`; sin evidencia/baseline → no alerta; UTC; 0 side-effects | servicio de evaluación | T-F03-05, T-F04-B1 | FR-ALRT-001..006 |
+| ✅ | T-F05-02 | Módulo `alerts`: GET `/installations/{id}/alerts` (`read`; query status/severity/from/to/limit, default open; **lectura pura**) + PATCH `/alerts/{id}/review` (RBAC `ROLES.operate`, viewer→403; `reviewed_at`/`reviewedBy`; `audit_log` `'alert.review'`; no borra) | endpoints (13 tests) | T-F05-01 | FR-ALRT-005, FR-DASH-006 |
+| ✅ | T-F05-03 | `RecommendationService.generateForAlert` + módulo `recommendations`: GET `/installations/{id}/recommendations` (`read`; status active/dismissed/applied/all, default active). 1 recomendación/alerta (`source='alert'`); `estimated_saving_kwh`=10% del exceso observado (null si no reducible); `estimated_saving_clp` vía BillingService (null sin tarifa, BR-031); textos sin "garantizado"; dedup | servicio + endpoint (8 tests) | T-F05-02, T-F04-B1 | FR-REC-001..005 |
+| ✅ | T-F05-04 | `DashboardService.alerts_pending_count` **real** (count `alerts status=open`; reviewed/dismissed no cuentan; leer no crea) — antes literal 0 | dashboard actualizado | T-F05-02, T-F04-B2 | FR-DASH-006 |
+| ✅ | T-F05-05 | Shared: `alerts.ts` extendido + `recommendations.ts` nuevo + `dashboard.ts` (`alerts_pending_count` literal 0 → number); web client `insightsApi.getAlerts/reviewAlert/getRecommendations` **preparatorios** (no usados por UI; DEMO_MODE intacto) | contratos + client | T-F05-02/03 | 04-api |
+| ✅ | T-F05-06 | Suite verde contra Neon: API **114/114** (empty states, tenant 403, RBAC viewer 403 en review, audit en review, dedup alertas/recomendaciones, sin baseline→no alerta, offline, savings null sin tarifa/number con tarifa, textos sin "garantizado", **0 control_actions/0 side-effects**, dashboard count real); auditoría OpenAPI ↔ código (paths 1:1, shapes superset) manual | suites + `phase-5-openapi-implementation-audit.md` | T-F05-00..05 | test-plan §3/§5/§7 |
+| ⏳ | T-F05-07 | `NotificationService` (in_app/email/push) para alertas — **diferido** (fase posterior) | servicio | T-F05-02 | FR-SET-005 |
+| ⏳ | T-F05-08 | Frontend `/breakdown` (DeviceBreakdownChart) y `/alerts` (AlertList, SeverityBadge, AlertFilters, RecommendationCard) — **diferido** (entrega frontend posterior) | páginas | T-F04-01.., T-F05-02/03 | FR-BRK/ALRT/REC |
+
+> **Resumen Fase 5:** motor de alertas (5 reglas + dedup, función interna) + lectura/review de alertas (RBAC + audit) + derivación/lectura de recomendaciones (BR-031) + `alerts_pending_count` real + migración aditiva 0002 ✅ **PASS** contra Neon real (API 114/114, 0 side-effects, tenant 403, viewer 403 en review). DEMO_MODE intacto (web client preparatorio). Pendiente (fase posterior): `NotificationService` (T-F05-07) y UI (T-F05-08). El `/breakdown` ya se entregó en Fase 4 (T-F04-B4). **Fase 6 AUTORIZABLE.**
 
 ## FASE 6 — Control
 
