@@ -15,6 +15,7 @@ import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { breakdownRoutes } from './modules/breakdown/breakdown.routes.js';
 import { alertsRoutes } from './modules/alerts/alerts.routes.js';
 import { recommendationsRoutes } from './modules/recommendations/recommendations.routes.js';
+import { controlRoutes } from './modules/control/control.routes.js';
 
 export interface BuildAppOptions {
   logger?: boolean;
@@ -46,6 +47,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(breakdownRoutes);
   await app.register(alertsRoutes);
   await app.register(recommendationsRoutes);
+  await app.register(controlRoutes);
 
   return app;
 }
