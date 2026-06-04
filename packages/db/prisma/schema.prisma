@@ -586,9 +586,13 @@ model Recommendation {
   installationId     String               @map("installation_id") @db.Uuid
   alertId            String?              @map("alert_id") @db.Uuid
   source             RecommendationSource
+  // type: vocabulario de recomendación del API (reduce_usage|schedule_shift|inspect_device|
+  // tariff_review|standby_reduction). text + validación Zod (añadido en migración 0002).
+  type               String?
   title              String
   description        String
   estimatedSavingClp BigInt?              @map("estimated_saving_clp") @db.BigInt
+  estimatedSavingKwh Decimal?             @map("estimated_saving_kwh") @db.Decimal(14, 4)
   priority           Int                  @default(0)
   status             RecommendationStatus @default(new)
   createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
