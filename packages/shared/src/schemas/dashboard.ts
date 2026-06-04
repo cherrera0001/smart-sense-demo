@@ -28,7 +28,7 @@ export const dashboardResponse = z.object({
   comparison: dashboardComparison,
   latest_reading_timestamp: z.string().nullable(),
   device_count: z.number().int().nonnegative(),
-  alerts_pending_count: z.literal(0),
+  alerts_pending_count: z.number().int().nonnegative(),
   data_status: dashboardDataStatus,
 });
 export type DashboardResponse = z.infer<typeof dashboardResponse>;
