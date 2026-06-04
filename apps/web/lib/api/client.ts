@@ -83,3 +83,34 @@ export const insightsApi = {
   getRecommendations: (installationId: string, query?: string, token?: string) =>
     apiFetch(`/installations/${installationId}/recommendations${query ? `?${query}` : ''}`, { token }),
 };
+
+/** Métodos de Fase 6 (control dry-run). PREPARATORIOS: no usados en UI; DEMO_MODE. */
+export const controlApi = {
+  createControlAction: (
+    deviceId: string,
+    body: { action: 'turn_on' | 'turn_off' | 'set_limit'; value?: number | null; reason?: string },
+    opts?: { idempotencyKey?: string; token?: string },
+  ) =>
+    apiFetch(`/devices/${deviceId}/control-actions`, {
+      method: 'POST',
+      body,
+      token: opts?.token,
+      // Nota: Idempotency-Key se añade en una capa superior cuando se conecte la UI.
+    }),
+  getControlActions: (deviceId: string, query?: string, token?: string) =>
+    apiFetch(`/devices/${deviceId}/control-actions${query ? `?${query}` : ''}`, { token }),
+  getControlState: (deviceId: string, token?: string) =>
+    apiFetch(`/devices/${deviceId}/control-state`, { token }),
+  createControlSchedule: (deviceId: string, body: unknown, token?: string) =>
+    apiFetch(`/devices/${deviceId}/control-schedules`, { method: 'POST', body, token }),
+  getControlSchedules: (deviceId: string, token?: string) =>
+    apiFetch(`/devices/${deviceId}/control-schedules`, { token }),
+  updateControlSchedule: (id: string, body: unknown, token?: string) =>
+    apiFetch(`/control-schedules/${id}`, { method: 'PATCH', body, token }),
+  createConsumptionLimit: (deviceId: string, body: unknown, token?: string) =>
+    apiFetch(`/devices/${deviceId}/consumption-limits`, { method: 'POST', body, token }),
+  getConsumptionLimits: (deviceId: string, token?: string) =>
+    apiFetch(`/devices/${deviceId}/consumption-limits`, { token }),
+  updateConsumptionLimit: (id: string, body: unknown, token?: string) =>
+    apiFetch(`/consumption-limits/${id}`, { method: 'PATCH', body, token }),
+};
