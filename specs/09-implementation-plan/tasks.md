@@ -233,17 +233,25 @@
 
 > **Resumen Fase 5:** motor de alertas (5 reglas + dedup, función interna) + lectura/review de alertas (RBAC + audit) + derivación/lectura de recomendaciones (BR-031) + `alerts_pending_count` real + migración aditiva 0002 ✅ **PASS** contra Neon real (API 114/114, 0 side-effects, tenant 403, viewer 403 en review). DEMO_MODE intacto (web client preparatorio). Pendiente (fase posterior): `NotificationService` (T-F05-07) y UI (T-F05-08). El `/breakdown` ya se entregó en Fase 4 (T-F04-B4). **Fase 6 AUTORIZABLE.**
 
-## FASE 6 — Control
+## FASE 6 — Control (backend implementado · dry-run)
 
-| ID | Descripción | Entregable | Dependencias | FR / Spec |
-|---|---|---|---|---|
-| T-F06-01 | ControlService.requestAction: pending + downlink MQTT + audit; viewer→rejected+403+audit | endpoint `/control-actions` | T-F02-04, T-F03-01 | FR-CTRL-001/002/009, INV-3/5 |
-| T-F06-02 | resolveAction async (ack/timeout, idempotente) invocado por bridge | resolución | T-F06-01 | FR-CTRL-008 |
-| T-F06-03 | getControlState + `/control-state` | endpoint | T-F06-01 | FR-CTRL-003 |
-| T-F06-04 | createSchedule (`/control-schedules`, valida solapamientos) | endpoint | T-F06-01 | FR-CTRL-004 |
-| T-F06-05 | createLimit (`/consumption-limits`, positivos, pre_alert_pct 1..100, action_on_exceed) + bloqueo de crítico | endpoint | T-F06-01, T-F05-02 | FR-CTRL-005/006, FR-PROF-005 |
-| T-F06-06 | Frontend `/control` (ControlToggle optimista, ControlActionLog) y `/smart-control` (ScheduleEditor, ConsumptionLimitForm) | páginas | T-F04-*, T-F06-01..05 | FR-CTRL-* |
-| T-F06-07 | Tests authz/integ/unit (viewer 403 sin downlink, audit por acción, resolución idempotente, solapamiento) | suite verde | T-F06-01..06 | NFR-003/013/014, test-plan §14 |
+> **Estado backend: ✅ PASS (2026-06-04, `feat/phase-6-device-control`).** **9 endpoints** en `apps/api/src/modules/control/` bajo JWT + `assertDeviceAccess`, **todos en dry-run** (sin downlink físico ni MQTT; `control-state` lógico/simulado; schedules/limits no ejecutan). **Migración aditiva 0003** (`control_actions.idempotency_key`+`dry_run`+UNIQUE parcial; no altera enums ni datos). **Tests:** API **140/140** (+ 26 control), iot-bridge **23/23**, DB **18/18**.
+> **Leyenda:** ✅ implementado y verificado en verde · ⏳ pendiente (downlink físico / automatización / frontend → fase futura).
+> **Reconciliación canon=persistencia:** action `type`; status `dry_run` derivado (persiste `success`+`dry_run=true`); `value/source/reason` en `payload`; schedule `name/value/cron/starts_at/ends_at` en `rule`; limit_type→`limitPowerW`/`limitKwh`+`window`; action notify↔`alert`. **Desviaciones/limitaciones documentadas:** dry-run only (sin efecto físico); `set_limit`-as-schedule/limit y `threshold≤0` → 422; sin `resolveAction` async; estado lógico (no físico confirmado); respuestas **superset** del `openapi.yaml`. Detalle: `docs/implementation/phase-6-summary.md`, `docs/audit/phase-6-{precheck,spec-readiness,control-data-model-audit,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-6-device-control.md`, `docs/security/phase-6-control-safety.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F06-00 | Migración **aditiva 0003** (`control_actions.idempotency_key` text + `dry_run` bool default true + UNIQUE parcial `(device_id, idempotency_key)`; no altera enums ni datos); `migrate deploy` OK contra Neon | migración SQL versionada | T-F01-16 | NFR-041; relational-model §Notas Fase 6 |
+| ✅ | T-F06-01 | `control` POST `/devices/{deviceId}/control-actions` (header `Idempotency-Key` opcional; RBAC `ROLES.operate`, viewer→403): **dry-run** (persiste `status='success'`+`dry_run=true`+`result{dry_run}`, API expone `status='dry_run'`; **sin downlink/MQTT**); capability `switch=true` o **409 `DEVICE_NOT_CONTROLLABLE`**; idempotente por `(deviceId, idempotency_key)`; audit `control.requested`+`control.resolved`; `value/source/reason` en `payload` | endpoint `/control-actions` | T-F06-00, T-F02-04, T-F03-01 | FR-CTRL-001/002/009, INV-3/5 |
+| ⏳ | T-F06-02 | resolveAction async (ack/timeout, idempotente) + downlink MQTT — **diferido** (fase futura: canal IoT autenticado por kit; ver `phase-6-control-safety.md`) | resolución | T-F06-01 | FR-CTRL-008 |
+| ✅ | T-F06-03 | GET `/devices/{deviceId}/control-actions` (`status?`/`limit?`) + GET `/control-state` (`{controllable, current_state on/off/unknown **lógico**, last_action, dry_run:true}`; **no físico confirmado**) | endpoints | T-F06-01 | FR-CTRL-003/007 |
+| ✅ | T-F06-04 | POST/GET `/devices/{deviceId}/control-schedules` + PATCH `/control-schedules/{id}` (action turn_on/off; `set_limit`→422; `name/value/cron/starts_at/ends_at` en `rule`; audit created/updated); **NO ejecuta** (sin scheduler, no crea action) | endpoints | T-F06-01 | FR-CTRL-004 |
+| ✅ | T-F06-05 | POST/GET `/devices/{deviceId}/consumption-limits` + PATCH `/consumption-limits/{id}` (limit_type power_w/energy_kwh_day/month → limitPowerW/limitKwh+window; action notify→alert/turn_off; `set_limit`→422; `threshold>0` o 422; audit created/updated); **NO ejecuta** (solo persiste política, no crea action) | endpoints | T-F06-01, T-F05-02 | FR-CTRL-005/006, FR-PROF-005 |
+| ✅ | T-F06-06 | Shared `control.ts` extendido; web client `controlApi` (9 métodos) **preparatorios** (no usados por UI; DEMO_MODE intacto) | contratos + client | T-F06-01..05 | 04-api |
+| ✅ | T-F06-07 | Suite verde contra Neon: API **140/140** (+ 26 control: turn_on/off/set_limit dry-run, 409 no-controlable, viewer 403, cross-tenant 403, idempotencia sin duplicar, audit `control.requested`/`control.resolved`, sin alerts/recommendations, state controllable/unknown/lógico, schedules create/list/patch+viewer/tenant 403+`set_limit` 422+no crea action, limits create/`threshold≤0` 422/list/patch+viewer/tenant 403+no crea action); auditoría OpenAPI ↔ código (paths 1:1, shapes superset) manual | suites + `phase-6-openapi-implementation-audit.md` | T-F06-00..06 | NFR-003/013/014, test-plan §14 |
+| ⏳ | T-F06-08 | Frontend `/control` (ControlToggle optimista, ControlActionLog) y `/smart-control` (ScheduleEditor, ConsumptionLimitForm) — **diferido** (entrega frontend posterior) | páginas | T-F04-*, T-F06-01..05 | FR-CTRL-* |
+
+> **Resumen Fase 6:** módulo `control` (9 endpoints **dry-run**) + migración aditiva 0003 + RBAC/tenant/capability/idempotencia/audit ✅ **PASS** contra Neon real (API 140/140, 0 downlink, 0 side-effects, viewer 403, tenant 403, 409 no-controlable). DEMO_MODE intacto (web client preparatorio). Pendiente (fase futura): downlink MQTT + `resolveAction` async (T-F06-02) y UI (T-F06-08). Precondiciones de control real en `docs/security/phase-6-control-safety.md`. **Fase 7 AUTORIZABLE.**
 
 ## FASE 7 — Hardening
 

@@ -177,7 +177,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 
 ## FASE 6 — Control
 
-> **Estado: 🔓 AUTORIZABLE (2026-06-04)** — Fase 5 cerró en PASS (alertas/recomendaciones backend contra Neon: 3 endpoints, motor de 5 reglas, dashboard `alerts_pending_count` real, migración aditiva 0002, API 114/114). Fase 6 añade el **control remoto** (`/devices/{id}/control-actions`, `/control-state`, `/control-schedules`, `/consumption-limits`) con downlink MQTT, auditoría por acción y RBAC (viewer → 403 + rejected auditado). No iniciada aún.
+> **Estado: ✅ PASS / implementada (backend · dry-run) (2026-06-04, `feat/phase-6-device-control`)** — Control de dispositivos backend cerrado **en dry-run** sobre Neon real. **9 endpoints** en `apps/api/src/modules/control/`, todos bajo JWT + `assertDeviceAccess`: POST/GET `/devices/{deviceId}/control-actions` (header `Idempotency-Key` opcional), GET `/control-state`, POST/GET `/control-schedules` + PATCH `/control-schedules/{id}`, POST/GET `/consumption-limits` + PATCH `/consumption-limits/{id}`. **Toda acción es dry-run:** persiste `status='success'`+`dry_run=true`+`result{dry_run}`, API expone `status='dry_run'`; **sin downlink físico ni MQTT**; `control-state` es **lógico/simulado** (no físico confirmado). **RBAC `ROLES.operate`** en mutaciones (viewer → 403); **capability** `switch=true` o **409 `DEVICE_NOT_CONTROLLABLE`**; **idempotencia** por `(deviceId, idempotency_key)`; **audit obligatorio** (`control.requested`/`control.resolved`, `control_schedule.created/updated`, `consumption_limit.created/updated`). Schedules/limits **solo persisten política, NO ejecutan** (sin scheduler); `set_limit`-as-schedule/limit y `threshold≤0` → 422. **Migración aditiva 0003** (`control_actions.idempotency_key` text + `dry_run` bool default true + UNIQUE parcial `(device_id, idempotency_key)`; no altera enums ni datos). **Reconciliación canon=persistencia** (status dry_run derivado; action `type`; `value/source/reason` en `payload`; schedule en `rule`; limit_type→limitPowerW/limitKwh+window; action notify↔alert). **Shared:** `control.ts` extendido. **Web client** `controlApi` (9 métodos) **preparatorio** (DEMO_MODE intacto). **Tests:** API **140/140** (+ 26 control), iot-bridge **23/23**, DB **18/18**. **Exclusiones (fase futura):** MQTT downlink productivo, comandos físicos, `resolveAction` async, automatización autónoma, reacción a alertas, smart-control, scheduler ejecutor, UI productiva. **Frontend de control: fase posterior.** Detalle: `docs/implementation/phase-6-summary.md`, `docs/audit/phase-6-{precheck,spec-readiness,control-data-model-audit,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-6-device-control.md`, `docs/security/phase-6-control-safety.md`. **Fase 7 AUTORIZABLE.**
 
 - **Objetivo:** control puntual on/off, programaciones, límites de consumo, con auditoría y validación de permisos.
 - **Entregables:**
@@ -190,6 +190,8 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 - **FR cubiertos:** FR-CTRL-001..009, FR-PROF-005 (bloqueo de apagado de crítico).
 
 ## FASE 7 — Hardening
+
+> **Estado: 🔓 AUTORIZABLE (2026-06-04)** — Fase 6 cerró en PASS (control backend dry-run contra Neon: 9 endpoints, migración aditiva 0003, RBAC/tenant/capability/idempotencia/audit, API 140/140). Fase 7 endurece seguridad/observabilidad/E2E/despliegue. Para el **downlink físico real** (control productivo), las precondiciones de seguridad están en `docs/security/phase-6-control-safety.md` (canal IoT autenticado por kit, confirmación de dispositivo/ACK, rollback, rate-limit). No iniciada aún.
 
 - **Objetivo:** seguridad, observabilidad, E2E completo, documentación y despliegue.
 - **Entregables:**
@@ -216,5 +218,5 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 | 3 | IoT + telemetría — **PASS** (3 endpoints, agregación inline, iot-bridge dry-run, API 56/56 · bridge 23/23) | 1,2 | DASH-001 (ingesta), telemetría latest/range |
 | 4 | Dashboard/reportes/breakdown (backend) — **PASS** (6 endpoints, BillingService, API 92/92) | 2,3 | DASH, REP, BRK, costeo CLP |
 | 5 | Alertas y recomendaciones (backend) — **PASS** (3 endpoints, 5 reglas, migración 0002, API 114/114) | 3,4 | ALRT, REC, DASH-006 |
-| 6 | Control — **AUTORIZABLE** | 2,3,5 | CTRL, PROF-005 |
-| 7 | Hardening | 1–6 | transversal + NFR |
+| 6 | Control (backend · dry-run) — **PASS** (9 endpoints, migración 0003, sin downlink, API 140/140) | 2,3,5 | CTRL, PROF-005 |
+| 7 | Hardening — **AUTORIZABLE** | 1–6 | transversal + NFR |
