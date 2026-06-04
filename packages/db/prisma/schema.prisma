@@ -612,6 +612,10 @@ model ControlAction {
   userId      String              @map("user_id") @db.Uuid
   type        ControlActionType
   status      ControlActionStatus @default(pending)
+  // Fase 6: idempotencia por (device_id, idempotency_key) y dry-run (sin downlink físico).
+  // Añadidos en migración 0003. UNIQUE parcial sobre idempotency_key se crea en SQL.
+  idempotencyKey String?         @map("idempotency_key")
+  dryRun         Boolean         @default(true) @map("dry_run")
   payload     Json?
   result      Json?
   requestedAt DateTime            @default(now()) @map("requested_at") @db.Timestamptz
