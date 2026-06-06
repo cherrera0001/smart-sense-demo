@@ -27,6 +27,9 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  // native = dev local (Windows). rhel-openssl-3.0.x = runtime de Vercel Serverless Functions
+  // (Fase 8.4: API en Vercel). Necesario para que Prisma cargue su query engine en Vercel.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 // ---------------------------------------------------------------------------

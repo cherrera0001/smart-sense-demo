@@ -57,3 +57,4 @@ apps/web/public/fallback-*.js
 # Vercel env pull (local, nunca commitear)
 .env.vercel.local
 .env*.local
+api/server.mjs
