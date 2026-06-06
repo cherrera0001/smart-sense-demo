@@ -302,6 +302,24 @@
 
 > **Resumen Fase 8.1:** rama pusheada ✅, **CI PASS** ✅, **PR #1** de revisión (sin merge) ✅, validación local + docs ✅, **producción no tocada** ✅; deploy de API a staging ⛔ (sin credenciales de hosting), de él dependen migrate/health/readyz/smoke remoto ⛔; Vercel preview ⛔ (autorización/riesgo de prod). **Fase 8 = READY-BLOCKED** hacia PASS — el deploy productivo/staging requiere credenciales de hosting y autorización.
 
+## FASE 8.2 — Despliegue controlado (PARTIAL)
+
+> **Estado: 🟡 PARTIAL (2026-06-06, `release/smartsense-f0-f7`, HEAD `8244169`).** Web v2 preview build ✅ (Vercel aislado); API staging ⛔ READY-BLOCKED por credenciales Railway. Solo documentación + specs (no se tocó código).
+> Docs Fase 8.2: `docs/audit/phase-8-2-{execution-precheck,railway-auth,vercel-web-v2-preview,api-staging-railway,pr-update}.md`, `docs/deployment/phase-8-2-{api-staging-manual-render,api-staging-manual-vps,production-cutover-runbook}.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F082-00 | **Precheck de ejecución 8.2**: HEAD `8244169`, tree limpio, PR #1 open, CI PASS, secret-scan exit 0, typecheck verde; API 156/156, DB 18/18, iot-bridge 23/23, smoke local 7 pasos | `phase-8-2-execution-precheck.md` | T-F08-06b | GATE-SEC-002, GATE-CI-001 |
+| ✅ | T-F082-01 | **Web v2 preview** (Vercel **aislado**): proyecto NUEVO `smartsense-web-v2` (scope `cherrera0001s-projects`), `apps/web` linkeado, `NEXT_PUBLIC_DEMO_MODE=true`, `vercel deploy --yes` → **READY**; HTTP 401 = Deployment Protection (acceso owner-auth, no fallo de build); **producción intacta** | `phase-8-2-vercel-web-v2-preview.md` | T-F08-05 | GATE-DEPLOY-001 (web) |
+| ⛔ | T-F082-02 | **Auth Railway**: `railway whoami` Unauthorized; `RAILWAY_TOKEN` ausente (bash+win); `flyctl`/`render` ausentes → **BLOQUEADO**. Acción humana: `railway login` o `RAILWAY_TOKEN` | `phase-8-2-railway-auth.md` | T-F082-00 | GATE-DEPLOY-001 (API) |
+| ⛔ | T-F082-03 | **API staging (Railway)** — **READY-BLOCKED** (sin auth; no se desplegó, no se inventó). Runbook ejecutable listo: init, variables, build/start, `railway up`, domain, migrate deploy, health/readyz/smoke | `phase-8-2-api-staging-railway.md` | T-F082-02 | GATE-DEPLOY-001, GATE-E2E-001 |
+| ✅ | T-F082-04 | **Runbooks staging alternativos** ejecutables: Render (dashboard, health `/health`) y VPS (systemd + nginx + TLS), env vars con placeholders, migrate deploy, smoke remoto | `phase-8-2-api-staging-manual-{render,vps}.md` | T-F082-02 | deployment, GATE-E2E-001 |
+| ✅ | T-F082-05 | **PR #1 comentado** (8.2): comentario ejecutivo (CI PASS, web v2 READY+URL, Railway bloqueado, docs staging listas, prod intacta, merge no autorizado) | `phase-8-2-pr-update.md` | T-F082-01..03 | criterio de cierre F8 |
+| ✅ | T-F082-06 | **Runbook de cutover a producción** (EXIGENTE): orden estricto + checklists ANTES/DURANTE/ROLLBACK (web v2 → API staging → smoke remoto → merge autorizado → Vercel prod root=`apps/web`/mover dominio → rollback; backup Neon; no down destructivas) | `phase-8-2-production-cutover-runbook.md` | T-F082-01..05 | rollback, criterio de cierre F8 |
+| ⛔ | T-F082-07 | **Smoke remoto staging** (`API_BASE_URL=<STAGING> pnpm smoke:api` 7 pasos) — **READY-BLOCKED** (depende de API staging) | smoke remoto | T-F082-03 | GATE-E2E-001 |
+
+> **Resumen Fase 8.2:** web v2 preview build ✅ (Vercel aislado READY; 401 = Deployment Protection, no fallo de build), PR #1 comentado ✅, runbooks staging + cutover ✅, producción no tocada ✅; **API staging ⛔ READY-BLOCKED por credenciales Railway** (`whoami` Unauthorized, `RAILWAY_TOKEN` ausente — no se desplegó, no se inventó) y de ella depende el smoke remoto ⛔. **Fase 8 = PARTIAL** hacia PASS — desbloqueo: `railway login` o `RAILWAY_TOKEN`.
+
 ---
 
 ## Notas de ejecución

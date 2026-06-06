@@ -1,6 +1,6 @@
 # Release Checklist — SmartSense F0–F7
 
-> Rama `release/smartsense-f0-f7` (HEAD `babfb68` + docs Fase 8.1). Fecha: **2026-06-06**.
+> Rama `release/smartsense-f0-f7` (HEAD `8244169` + docs Fase 8.2). Fecha: **2026-06-06**.
 > Leyenda: ✅ hecho · ⏳ pendiente (lo ejecuta el orquestador) · ⛔ bloqueado (autorización/entorno).
 
 | # | Ítem | Estado | Nota |
@@ -21,14 +21,16 @@
 | 11 | Rollback definido | ✅ | Plan documentado en `docs/deployment/rollback-plan.md`. |
 | 12 | Push de rama de release | ✅ | `release/smartsense-f0-f7` pusheada a `origin` (NO master). |
 | 12b | PR de revisión | ✅ | PR **#1** abierto (base `master`, head release) — **solo revisión, sin merge**; riesgo de prod documentado en el body (`phase-8-1-pr.md`). |
-| 13 | Deploy API staging | ⛔ | READY-BLOCKED: sin CLI de hosting autenticado (flyctl ausente, railway sin login, render ausente, sin Docker). |
-| 13b | Vercel preview (web) | ⛔ | Previews del push FALLARON (root monorepo sin app Next); producción INTACTA; cambiar settings rompe prod de master → pendiente de autorización (`phase-8-1-vercel-preview.md`). |
+| 13 | Deploy API staging | ⛔ | **Fase 8.2:** Railway sin auth (`whoami` Unauthorized, `RAILWAY_TOKEN` ausente bash+win); no se desplegó (no se inventó). Runbooks Railway/Render/VPS listos (`phase-8-2-api-staging-{railway,manual-render,manual-vps}`). |
+| 13b | Vercel preview (web) | ✅ | **Fase 8.2:** proyecto **aislado** `smartsense-web-v2` (scope `cherrera0001s-projects`), `apps/web` linkeado, `NEXT_PUBLIC_DEMO_MODE=true`, deploy **READY**. HTTP 401 = Deployment Protection (acceso tras owner-auth), **no** fallo de build. Producción intacta (`phase-8-2-vercel-web-v2-preview.md`). |
+| 13c | Smoke remoto staging | ⛔ | **Fase 8.2:** depende de API staging (bloqueada por credenciales). `API_BASE_URL=<STAGING> pnpm smoke:api`. |
+| 13d | PR #1 comentado (8.2) | ✅ | Comentario ejecutivo publicado (CI PASS, web v2 READY+URL, Railway bloqueado, docs staging listas, prod intacta, merge no autorizado) (`phase-8-2-pr-update.md`). |
 | 14 | Build de imágenes Docker | ⛔ | BLOCKED por entorno local; se ejecuta en CI/host con Docker. |
 | 15 | Producción NO tocada | ✅ | `master` sin cambios; Vercel producción `Ready`/intacta; settings de Vercel no modificados. |
 
 ## Resumen de estado
 
-- **Listo (✅):** secret scan, migraciones dev, health/readyz local, smoke local, web build, DEMO_MODE, no-downlink, control dry-run, Neon dev identificado, rollback definido, **push de la rama**, **CI PASS**, **PR #1 abierto (sin merge)**, **producción no tocada**.
-- **Bloqueado por credenciales de hosting / autorización (⛔, READY-BLOCKED):** deploy de API a staging, migrate staging, health/readyz remoto, smoke remoto, Vercel preview, build de imágenes Docker.
+- **Listo (✅):** secret scan, migraciones dev, health/readyz local, smoke local, web build, DEMO_MODE, no-downlink, control dry-run, Neon dev identificado, rollback definido, **push de la rama**, **CI PASS**, **PR #1 abierto (sin merge) + comentado (8.2)**, **web v2 preview build (Vercel aislado, acceso tras owner-auth)**, **producción NO tocada**.
+- **Bloqueado por credenciales de hosting / autorización (⛔):** deploy de API a staging (Railway sin auth), migrate staging, health/readyz remoto, smoke remoto, build de imágenes Docker.
 
-> **Veredicto Fase 8.1:** **READY-BLOCKED** — release branch + CI + PR de revisión listos; el deploy de API a staging está bloqueado por falta de credenciales de hosting (sin CLI autenticado), y de él dependen migrate/health/readyz/smoke remoto. El Vercel preview limpio depende de autorización (riesgo de producción en `master`). Producción intacta.
+> **Veredicto Fase 8.2:** **PARTIAL** — **web v2 preview build ✅** (Vercel aislado `smartsense-web-v2`, deployment READY; acceso tras owner-auth, 401 = Deployment Protection, no fallo de build); **API staging ⛔** (Railway sin auth: `whoami` Unauthorized, `RAILWAY_TOKEN` ausente bash+win — no se desplegó, no se inventó), y de ella dependen **smoke remoto ⛔**; **PR #1 comentado ✅**; **producción NO tocada ✅** (`smart-sense-demo` / `smartsense.c4a.cl` intactos, `master` sin cambios). Desbloqueo de API: `railway login` o `RAILWAY_TOKEN` (runbooks Railway/Render/VPS listos).

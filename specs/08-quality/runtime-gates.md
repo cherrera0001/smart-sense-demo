@@ -206,9 +206,12 @@
 - **FAIL:** error de build; imagen copia secretos.
 - **BLOCKED:** Docker **no disponible** en el entorno local → **BLOCKED** (no FAIL); construir en CI / host con Docker.
 - **Evidencia:** Dockerfiles (`apps/api/Dockerfile`, `apps/web/Dockerfile`) + `.dockerignore` creados y listos.
-- **Estado actual:** **BLOCKED (entorno)** — Dockerfiles listos; build no ejecutado localmente. **Sigue BLOCKED en Fase 8.1** (sin Docker local ni host con Docker autenticado). No afecta el PASS del código (CI).
-- **Nota Fase 8.1 (PR/CI):** rama `release/smartsense-f0-f7` pusheada; **CI PASS** (run `27052719013`, postgres:16 efímero); **PR #1** abierto solo para revisión (sin merge); deploy de API a staging READY-BLOCKED (credenciales de hosting). Ver `docs/audit/phase-8-1-{precheck,vercel-preview,pr}.md`.
-- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`, `docs/audit/phase-8-1-precheck.md`.
+- **Estado actual:** **PASS (web, Vercel aislado)** / **BLOCKED (API + Docker entorno)**.
+  - **Web (Fase 8.2):** **PASS** — proyecto Vercel **aislado** `smartsense-web-v2` (scope `cherrera0001s-projects`), `apps/web` linkeado, `NEXT_PUBLIC_DEMO_MODE=true`, `vercel deploy --yes` → deployment **READY** (build exitoso). HTTP 401 = Deployment Protection (acceso tras owner-auth), **no** fallo de build. Producción `smart-sense-demo` intacta.
+  - **API staging (Fase 8.2):** **BLOCKED por credenciales** — Railway `whoami` Unauthorized, `RAILWAY_TOKEN` ausente (bash+win); `flyctl`/`render` ausentes. **No se desplegó (no se inventó).** Runbooks ejecutables listos (Railway/Render/VPS). Desbloqueo: `railway login` o `RAILWAY_TOKEN`.
+  - **Docker build:** sigue **BLOCKED (entorno)** — Dockerfiles listos para CI; no ejecutado local. No afecta el PASS del código (CI).
+- **Nota Fase 8.1 (PR/CI):** rama `release/smartsense-f0-f7` pusheada; **CI PASS** (run `27052719013`, postgres:16 efímero); **PR #1** abierto solo para revisión (sin merge). Ver `docs/audit/phase-8-1-{precheck,vercel-preview,pr}.md`.
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`, `docs/audit/phase-8-1-precheck.md`, `docs/audit/phase-8-2-{execution-precheck,vercel-web-v2-preview,railway-auth,api-staging-railway}.md`.
 
 ### GATE-E2E-001 — Smoke de API (`smoke-api`)
 
@@ -219,8 +222,8 @@
 - **BLOCKED:** API/Neon no accesibles → BLOCKED.
 - **Evidencia:** salida del smoke (7/7).
 - **Estado actual (local):** **PASS** (7/7 contra API real + Neon dev).
-- **Estado actual (staging):** **READY-BLOCKED (Fase 8.1)** — sin API de staging desplegada (sin CLI de hosting autenticado). Correr `API_BASE_URL=<STAGING_API_URL> pnpm smoke:api` cuando exista el host (`docs/audit/phase-8-1-staging-smoke.md`).
-- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`, `docs/audit/phase-8-1-staging-smoke.md`.
+- **Estado actual (staging):** **READY-BLOCKED (Fase 8.1 y 8.2)** — sin API de staging desplegada. En Fase 8.2 el bloqueo es **por credenciales Railway** (`whoami` Unauthorized, `RAILWAY_TOKEN` ausente bash+win; no se desplegó, no se inventó). Correr `API_BASE_URL=<STAGING_API_URL> pnpm smoke:api` cuando exista el host (runbooks Railway/Render/VPS en `docs/audit/phase-8-2-api-staging-railway.md`, `docs/deployment/phase-8-2-api-staging-manual-{render,vps}.md`).
+- **Registrar en:** `docs/audit/phase-7-runtime-verification.md`, `docs/audit/phase-8-1-staging-smoke.md`, `docs/audit/phase-8-2-railway-auth.md`.
 
 ---
 
@@ -260,9 +263,11 @@
 | GATE-OPS-001 | `GET /healthz` | **PASS** | liveness `{status,service,version,timestamp,uptime_s}`, sin secretos |
 | GATE-OPS-002 | `GET /readyz` | **PASS** | `SELECT 1` → ready/db ok; 503 degraded si falla |
 | GATE-CI-001 | `.github/workflows/ci.yml` | **PASS** | pipeline definido (postgres:16 efímero); scripts root consistentes |
-| GATE-DEPLOY-001 | `docker build` api/web | **BLOCKED (entorno)** | Docker no disponible local; Dockerfiles+`.dockerignore` listos para CI; **sigue BLOCKED en Fase 8.1** |
-| GATE-E2E-001 | `pnpm smoke:api` | **PASS (local)** / **READY-BLOCKED (staging)** | 7/7 local contra Neon dev; staging pendiente de API desplegada (Fase 8.1) |
+| GATE-DEPLOY-001 | Vercel web v2 / `docker build` / API staging | **PASS (web aislado)** / **BLOCKED (API+Docker)** | **Fase 8.2:** web `smartsense-web-v2` deploy READY (401 = Deployment Protection, no fallo de build); API staging BLOCKED por credenciales Railway; Docker BLOCKED por entorno |
+| GATE-E2E-001 | `pnpm smoke:api` | **PASS (local)** / **READY-BLOCKED (staging)** | 7/7 local contra Neon dev; staging pendiente de API desplegada (Fase 8.2: Railway sin auth) |
 
 **Conclusión:** todos los gates de Fase 7 en **PASS** salvo **GATE-DEPLOY-001 = BLOCKED por entorno** (Docker no disponible local; Dockerfiles listos para construirse en CI — no es FAIL). Suites: **API 156/156** (security 7, health 2, auth-refresh 7), **iot-bridge 23/23**, **DB 18/18**; typecheck/lint/builds verdes. **Estado de Fase 7 = PASS** (rotación de secreto ejecutada; Docker build BLOCKED documentado, no afecta el PASS).
 
 > **Nota Fase 8.1 (Staging Deployment Verification, 2026-06-06):** rama `release/smartsense-f0-f7` pusheada; **CI PASS** (run `27052719013`); **PR #1** de revisión abierto (base `master`, head release, **sin merge**). **GATE-E2E-001 staging = READY-BLOCKED** (sin API de staging: ningún CLI de hosting autenticado — `railway` sin login, `flyctl`/`render` ausentes, sin Docker). **GATE-DEPLOY-001 = BLOCKED** (sin cambios). Vercel preview pendiente de autorización (riesgo de prod en `master`). Producción intacta. Detalle: `docs/audit/phase-8-1-*.md`.
+>
+> **Nota Fase 8.2 (Despliegue controlado, 2026-06-06, HEAD `8244169`, PARTIAL):** **GATE-DEPLOY-001 (web) = PASS** — proyecto Vercel **aislado** `smartsense-web-v2` (`apps/web`, `NEXT_PUBLIC_DEMO_MODE=true`) deploy **READY** (build exitoso; HTTP 401 = Deployment Protection, no fallo de build; producción intacta). **GATE-DEPLOY-001 (API staging) = BLOCKED por credenciales** (Railway `whoami` Unauthorized, `RAILWAY_TOKEN` ausente bash+win; no se desplegó, no se inventó). **GATE-E2E-001 staging = READY-BLOCKED** (depende de API staging). Runbooks ejecutables listos (Railway/Render/VPS) + cutover EXIGENTE. Desbloqueo: `railway login` o `RAILWAY_TOKEN`. Detalle: `docs/audit/phase-8-2-*.md`, `docs/deployment/phase-8-2-*.md`.
