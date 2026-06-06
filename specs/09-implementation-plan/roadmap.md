@@ -206,6 +206,26 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 - **Criterio de cierre:** todos los gates de `test-plan.md §3`; matriz de validación con 45/45 NFR e INV-1..10 en `VALIDADO`; SLO de carga dentro de objetivo; release candidate desplegable.
 - **FR cubiertos:** transversal (endurecimiento de los 87 FR e invariantes); cierra V1 pendiente y prepara V2.
 
+## FASE 8 — Release / CI / Deployment
+
+> **Estado: 🟡 PARTIAL (2026-06-06, `release/smartsense-f0-f7`).** Rama de release F0–F7 (superset lineal, 45 commits sobre `master`) y CI on-push **listos**; **deploy productivo/staging PENDIENTE** por falta de credenciales/autorización de hosting. Solo documentación + actualización de specs (no se tocó código).
+>
+> **Listo (✅):** rama `release/smartsense-f0-f7` creada desde `feat/phase-7-hardening`; working tree limpio; secret-scan exit 0 (`.env` ignorados, `.env.example` placeholders); validación local en verde sobre este HEAD (typecheck/lint/build:api/build:web; API 156/156, DB 18/18, iot-bridge 23/23, smoke local 7 pasos); 4 migraciones aditivas aplicadas a Neon dev; CI `.github/workflows/ci.yml` on push (postgres:16 efímero, no Neon).
+> **Pendiente de orquestador (⏳):** push de la rama (como rama, **NO** master) y verificación de la corrida de CI.
+> **Bloqueado (⛔):** build de imágenes Docker (BLOCKED por entorno local — no FAIL); deploy de API a hosting (Railway/Render/Fly) y smoke contra staging (requieren credenciales/autorización de hosting).
+>
+> Docs: `docs/audit/phase-8-{release-precheck,secret-scan,local-validation}.md`, `docs/release/{release-f0-f7,release-checklist}.md`, `docs/deployment/{environment-variables,database-migration-runbook,rollback-plan,phase-8-staging-deployment}.md`.
+
+- **Objetivo:** preparar el release candidate F0–F7 (rama de release + CI verificable) y dejar documentado el camino de despliegue a staging/prod.
+- **Entregables:**
+  - Rama de release `release/smartsense-f0-f7` (superset lineal F0–F7) lista para push.
+  - Precheck de release, secret-scan y validación local consolidados (docs `audit/phase-8-*`).
+  - Notas de release + checklist (docs `release/*`).
+  - Runbooks de despliegue: variables por componente, migraciones, rollback, despliegue a staging (docs `deployment/*`).
+- **Dependencias:** FASES 1–7 (F0–F7 en PASS).
+- **Criterio de cierre (→ PASS):** rama pusheada + CI verde + deploy a staging con health/readyz/smoke remoto OK. **Actualmente PARTIAL:** release branch + CI listos; deploy staging/prod requiere autorización/hosting.
+- **FR cubiertos:** N/A (release/operación; despliegue de los 87 FR ya implementados en F0–F7).
+
 ---
 
 ## Resumen de fases
@@ -222,5 +242,6 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 | 5 | Alertas y recomendaciones (backend) — **PASS** (3 endpoints, 5 reglas, migración 0002, API 114/114) | 3,4 | ALRT, REC, DASH-006 |
 | 6 | Control (backend · dry-run) — **PASS** (9 endpoints, migración 0003, sin downlink, API 140/140) | 2,3,5 | CTRL, PROF-005 |
 | 7 | Hardening — **PASS** (rotación Neon, helmet/cors/rate-limit, refresh-token 0004, health/readyz, CI, Dockerfiles, secret-scan, smoke; API 156/156; Docker build BLOCKED entorno) | 1–6 | transversal + NFR |
+| 8 | Release / CI / Deployment — **🟡 PARTIAL** (rama `release/smartsense-f0-f7` + CI on-push listos; deploy staging/prod **pendiente** de autorización/hosting) | 1–7 | N/A (release/operación) |
 
-> **Roadmap F0–F7 COMPLETO** (2026-06-04). Las 8 fases (0, 0.5, 1, 1.2, 1.4, 2, 3, 4, 5, 6, 7) cerradas en PASS. **Fase 8** (despliegue productivo real + downlink IoT físico) = fase futura, **requiere autorización explícita** (impacto productivo y físico).
+> **Roadmap F0–F7 COMPLETO** (2026-06-04). Las 8 fases (0, 0.5, 1, 1.2, 1.4, 2, 3, 4, 5, 6, 7) cerradas en PASS. **Fase 8** (release/CI/deployment) = **PARTIAL** (2026-06-06): release branch + CI listos; el deploy productivo/staging y el downlink IoT físico **requieren autorización explícita** y credenciales de hosting (impacto productivo y físico).

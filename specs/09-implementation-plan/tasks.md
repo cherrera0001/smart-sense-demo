@@ -279,6 +279,26 @@
 
 > **Resumen Fase 7:** rotación real del secreto Neon + plugins de seguridad (helmet/cors/rate-limit) + hardening de `env.ts` + refresh-token rotation (migración 0004) + logger redactado + health/readiness + CI (GitHub Actions) + Dockerfiles + secret-scan + smoke + observabilidad + gates ✅ **PASS** contra Neon real (API 156/156, iot-bridge 23/23, DB 18/18). **GATE-DEPLOY-001 (build de imágenes Docker) = BLOCKED por entorno** (Docker no disponible local; Dockerfiles listos para CI — no FAIL). DEMO_MODE intacto. **Roadmap F0–F7 COMPLETO.** Pendiente (Fase 8, requiere autorización): despliegue productivo real + downlink IoT físico (T-F07-14/15).
 
+## FASE 8 — Release / CI / Deployment (PARTIAL)
+
+> **Estado: 🟡 PARTIAL (2026-06-06, `release/smartsense-f0-f7`).** Rama de release F0–F7 (superset lineal, 45 commits sobre `master`) + CI on-push **listos**; **deploy staging/prod PENDIENTE** por autorización/credenciales de hosting. Solo documentación + actualización de specs (no se tocó código).
+> **Leyenda:** ✅ hecho · ⏳ pendiente (lo ejecuta el orquestador) · ⛔ bloqueado (autorización/entorno).
+> Docs: `docs/audit/phase-8-{release-precheck,secret-scan,local-validation}.md`, `docs/release/{release-f0-f7,release-checklist}.md`, `docs/deployment/{environment-variables,database-migration-runbook,rollback-plan,phase-8-staging-deployment}.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F08-00 | **Rama de release** `release/smartsense-f0-f7` creada desde `feat/phase-7-hardening` (superset lineal F0–F7, 45 commits sobre `master`); working tree limpio; precheck de ramas/divergencia (push como rama, NO master) | rama + `phase-8-release-precheck.md` | T-F07-* | criterio de cierre F8 |
+| ✅ | T-F08-01 | **Secret-scan** pre-release: `pnpm security:scan-secrets` exit 0; `git grep` sin secretos reales; `.env` ignorados; `.env.example` placeholders; rotación Neon (F7) vigente | `phase-8-secret-scan.md` | T-F07-00/01 | NFR-006, GATE-SEC-002 |
+| ✅ | T-F08-02 | **Validación local** consolidada sobre este HEAD: typecheck/lint/build:api/build:web ✅; API 156/156, DB 18/18, iot-bridge 23/23, smoke local 7 pasos ✅; Docker build ⛔ BLOCKED entorno | `phase-8-local-validation.md` | T-F07-* | test-plan §3, GATE-DEPLOY-001 |
+| ✅ | T-F08-03 | **Docs de release**: notas F0–F7 (fases, contrato API, 4 migraciones, CI, deploy pendiente, variables, riesgos, rollback, checklist post-deploy) + checklist de release con estado por ítem | `release-f0-f7.md`, `release-checklist.md` | T-F08-00..02 | release/operación |
+| ✅ | T-F08-04 | **Runbooks de despliegue**: variables por componente (placeholders), runbook de migraciones (`migrate deploy`, no `dev`; seed dev/staging), plan de rollback, despliegue a staging (Opción A/B) | `environment-variables.md`, `database-migration-runbook.md`, `rollback-plan.md`, `phase-8-staging-deployment.md` | T-F08-00..03 | NFR-041/019, deployment |
+| ⏳ | T-F08-05 | **Push de la rama de release** a `origin` (como rama `release/smartsense-f0-f7`, **NO** master) — **lo ejecuta el orquestador** | push | T-F08-00..04 | criterio de cierre F8 |
+| ⏳ | T-F08-06 | **Verificación de CI** (`.github/workflows/ci.yml` on push: secret-scan→typecheck→lint→build→migrate/seed/test:db; postgres:16 efímero, no Neon) — corrida verificada tras el push | CI verde | T-F08-05, T-F07-09 | NFR-041/006, GATE-CI-001 |
+| ⛔ | T-F08-07 | **Deploy a staging** (API a Railway/Render/Fly + web Vercel preview + Neon staging; CORS al preview, `NEXT_PUBLIC_API_URL` a la API) — **BLOCKED por autorización/credenciales de hosting** | deploy staging | T-F08-06 | GATE-DEPLOY-001 |
+| ⛔ | T-F08-08 | **Smoke remoto** contra staging (`/healthz`, `/readyz`, 7 pasos register→…→recommendations) — **BLOCKED** (depende del deploy de staging) | smoke remoto | T-F08-07, T-F07-11 | test-plan §16, GATE-E2E-001 |
+
+> **Resumen Fase 8:** rama de release F0–F7 + secret-scan + validación local + docs de release/deployment ✅; push de la rama y verificación de CI ⏳ (orquestador); deploy a staging y smoke remoto ⛔ (requieren autorización/credenciales de hosting). **Fase 8 = PARTIAL** — release branch + CI listos; deploy productivo/staging pendiente de autorización.
+
 ---
 
 ## Notas de ejecución
