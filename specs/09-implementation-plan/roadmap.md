@@ -208,13 +208,12 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 
 ## FASE 8 — Release / CI / Deployment
 
-> **Estado: 🟡 PARTIAL (2026-06-06, `release/smartsense-f0-f7`).** Rama de release F0–F7 (superset lineal, 45 commits sobre `master`) y CI on-push **listos**; **deploy productivo/staging PENDIENTE** por falta de credenciales/autorización de hosting. Solo documentación + actualización de specs (no se tocó código).
+> **Estado: 🟡 READY-BLOCKED (2026-06-06, `release/smartsense-f0-f7`).** Rama de release F0–F7 **pusheada**, CI on-push **PASS** y **PR #1** de revisión abierto; **deploy de API a staging y Vercel preview PENDIENTES** por falta de credenciales de hosting / autorización. Solo documentación + actualización de specs (no se tocó código).
 >
-> **Listo (✅):** rama `release/smartsense-f0-f7` creada desde `feat/phase-7-hardening`; working tree limpio; secret-scan exit 0 (`.env` ignorados, `.env.example` placeholders); validación local en verde sobre este HEAD (typecheck/lint/build:api/build:web; API 156/156, DB 18/18, iot-bridge 23/23, smoke local 7 pasos); 4 migraciones aditivas aplicadas a Neon dev; CI `.github/workflows/ci.yml` on push (postgres:16 efímero, no Neon).
-> **Pendiente de orquestador (⏳):** push de la rama (como rama, **NO** master) y verificación de la corrida de CI.
-> **Bloqueado (⛔):** build de imágenes Docker (BLOCKED por entorno local — no FAIL); deploy de API a hosting (Railway/Render/Fly) y smoke contra staging (requieren credenciales/autorización de hosting).
+> **Listo (✅):** rama `release/smartsense-f0-f7` **pusheada** a `origin` (NO master); secret-scan exit 0; validación local en verde sobre este HEAD (typecheck -r/build:api/build:web; API 156/156, DB 18/18, iot-bridge 23/23, smoke local 7 pasos); 4 migraciones aditivas en Neon dev; **CI PASS** (run `27052719013`, postgres:16 efímero); **PR #1** abierto (base `master`, head release) — **solo revisión, sin merge**, riesgo de prod documentado; **producción INTACTA** (`master` sin cambios, Vercel `Ready`, settings no modificados).
+> **Bloqueado (⛔ READY-BLOCKED):** deploy de **API a staging** (sin CLI de hosting autenticado: `railway` sin login interactivo, `flyctl`/`render` ausentes, sin Docker local); de él dependen **migrate staging**, **health/readyz remoto** y **smoke remoto**. **Vercel preview** web: previews del push FALLARON (root del monorepo sin app Next) → pendiente de **autorización** (cambiar settings rompería prod de `master`). Build de imágenes Docker: BLOCKED por entorno (no FAIL).
 >
-> Docs: `docs/audit/phase-8-{release-precheck,secret-scan,local-validation}.md`, `docs/release/{release-f0-f7,release-checklist}.md`, `docs/deployment/{environment-variables,database-migration-runbook,rollback-plan,phase-8-staging-deployment}.md`.
+> Docs Fase 8.1: `docs/audit/phase-8-1-{precheck,staging-migration,staging-health,staging-smoke,vercel-preview,pr}.md`. Docs Fase 8: `docs/audit/phase-8-{release-precheck,secret-scan,local-validation,ci-result}.md`, `docs/release/{release-f0-f7,release-checklist}.md`, `docs/deployment/{environment-variables,database-migration-runbook,rollback-plan,phase-8-staging-deployment}.md`.
 
 - **Objetivo:** preparar el release candidate F0–F7 (rama de release + CI verificable) y dejar documentado el camino de despliegue a staging/prod.
 - **Entregables:**
@@ -223,7 +222,7 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
   - Notas de release + checklist (docs `release/*`).
   - Runbooks de despliegue: variables por componente, migraciones, rollback, despliegue a staging (docs `deployment/*`).
 - **Dependencias:** FASES 1–7 (F0–F7 en PASS).
-- **Criterio de cierre (→ PASS):** rama pusheada + CI verde + deploy a staging con health/readyz/smoke remoto OK. **Actualmente PARTIAL:** release branch + CI listos; deploy staging/prod requiere autorización/hosting.
+- **Criterio de cierre (→ PASS):** rama pusheada + CI verde + deploy a staging con health/readyz/smoke remoto OK. **Actualmente READY-BLOCKED:** rama pusheada ✅, CI PASS ✅, PR #1 de revisión ✅; deploy de API a staging ⛔ (sin credenciales de hosting), de él dependen migrate/health/readyz/smoke remoto; Vercel preview ⛔ (autorización/riesgo de prod). Producción no tocada.
 - **FR cubiertos:** N/A (release/operación; despliegue de los 87 FR ya implementados en F0–F7).
 
 ---
@@ -242,6 +241,6 @@ Una fase **no se cierra** hasta cumplir todos los gates de `08-quality/test-plan
 | 5 | Alertas y recomendaciones (backend) — **PASS** (3 endpoints, 5 reglas, migración 0002, API 114/114) | 3,4 | ALRT, REC, DASH-006 |
 | 6 | Control (backend · dry-run) — **PASS** (9 endpoints, migración 0003, sin downlink, API 140/140) | 2,3,5 | CTRL, PROF-005 |
 | 7 | Hardening — **PASS** (rotación Neon, helmet/cors/rate-limit, refresh-token 0004, health/readyz, CI, Dockerfiles, secret-scan, smoke; API 156/156; Docker build BLOCKED entorno) | 1–6 | transversal + NFR |
-| 8 | Release / CI / Deployment — **🟡 PARTIAL** (rama `release/smartsense-f0-f7` + CI on-push listos; deploy staging/prod **pendiente** de autorización/hosting) | 1–7 | N/A (release/operación) |
+| 8 | Release / CI / Deployment — **🟡 READY-BLOCKED** (rama pusheada + CI PASS + PR #1 de revisión; API staging / Vercel preview **pendientes** de credenciales/autorización) | 1–7 | N/A (release/operación) |
 
-> **Roadmap F0–F7 COMPLETO** (2026-06-04). Las 8 fases (0, 0.5, 1, 1.2, 1.4, 2, 3, 4, 5, 6, 7) cerradas en PASS. **Fase 8** (release/CI/deployment) = **PARTIAL** (2026-06-06): release branch + CI listos; el deploy productivo/staging y el downlink IoT físico **requieren autorización explícita** y credenciales de hosting (impacto productivo y físico).
+> **Roadmap F0–F7 COMPLETO** (2026-06-04). Las 8 fases (0, 0.5, 1, 1.2, 1.4, 2, 3, 4, 5, 6, 7) cerradas en PASS. **Fase 8 / 8.1** (release/CI/deployment) = **READY-BLOCKED** (2026-06-06): rama pusheada + **CI PASS** (run `27052719013`) + **PR #1** de revisión (sin merge); el deploy de API a staging (con migrate/health/readyz/smoke remoto) y el Vercel preview limpio **requieren credenciales de hosting / autorización explícita** (riesgo de prod en `master`). Producción intacta. Fase 8 sigue **READY-BLOCKED hacia PASS**.

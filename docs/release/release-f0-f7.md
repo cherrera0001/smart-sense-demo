@@ -4,6 +4,22 @@
 > HEAD: `a8bc3b6`. Estado de Fase 8: **PARTIAL** (release branch + CI listos; deploy productivo/staging pendiente de autorización/hosting).
 > Todos los secretos en placeholders (`USER:PASSWORD@HOST`). La credencial real de Neon fue rotada en Fase 7 y vive solo en `packages/db/.env` (gitignored).
 
+## 0. Estado de release (Fase 8.1)
+
+> **2026-06-06 · Staging Deployment Verification · READY-BLOCKED.**
+
+| Item | Estado |
+|---|---|
+| Rama remota | ✅ `release/smartsense-f0-f7` pusheada a `origin` (`cherrera0001/smart-sense-demo`), **NO** master |
+| CI | ✅ **PASS** (run `27052719013`, postgres:16 efímero) |
+| PR | ✅ **#1 abierto** (base `master`, head release) — **solo revisión, sin merge**; riesgo de prod en el body |
+| API staging | ⛔ **READY-BLOCKED** — sin CLI de hosting autenticado (flyctl ausente, railway sin login, render ausente, sin Docker) |
+| Migrate / health / smoke remoto | ⛔ PENDIENTES (dependen de la API staging) |
+| Vercel preview (web) | ⛔ previews del push FALLARON (root sin app Next); **pendiente de autorización** (riesgo de prod en `master`) |
+| Producción | ✅ **INTACTA** (`master` sin cambios; Vercel `Ready`; settings no modificados) |
+
+> PR: **https://github.com/cherrera0001/smart-sense-demo/pull/1**. Detalle en `docs/audit/phase-8-1-*.md` y `docs/release/release-checklist.md`.
+
 ## 1. Qué entrega cada fase
 
 | Fase | Entrega |

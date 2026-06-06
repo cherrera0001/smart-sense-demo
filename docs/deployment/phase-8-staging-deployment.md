@@ -1,12 +1,12 @@
 # Fase 8 — Despliegue a staging
 
-> Fase 8 = **PARTIAL**. Este documento describe las dos opciones de despliegue a staging.
+> Fase 8.1 = **READY-BLOCKED**. Este documento describe las opciones de despliegue a staging.
 > **Sin credenciales/autorización de hosting, el deploy queda PENDIENTE.** URLs y secretos con placeholders.
 
 ## Estado
 
-- Rama de release lista (`release/smartsense-f0-f7`) y CI on push (`docs/release/release-f0-f7.md`).
-- **Deploy NO ejecutado:** falta autorización y credenciales del hosting de API (Railway/Render/Fly) y de la DB de staging.
+- Rama de release pusheada (`release/smartsense-f0-f7`), CI **PASS** (run `27052719013`) y **PR #1** abierto solo para revisión (`docs/release/release-f0-f7.md`, `docs/audit/phase-8-1-pr.md`).
+- **Deploy NO ejecutado:** no hay CLI de hosting autenticado — `railway` instalado **sin login** (interactivo), `flyctl`/`render` ausentes, sin Docker local. Ver Opción A.1 (Railway) abajo.
 - Build de imágenes Docker: BLOCKED por entorno local (se ejecuta en CI/host con Docker).
 
 ---
@@ -78,8 +78,47 @@ vercel --prebuilt    # preview demo
 
 ---
 
+## Opción A.1 — Deploy de la API en Railway (cuando haya login)
+
+> **Estado Fase 8.1 (2026-06-06):** `railway` CLI **instalado** pero **NO logueado**. El login es **interactivo/browser** → requiere acción del usuario:
+>
+> ```bash
+> railway login    # acción del usuario (abre browser)
+> ```
+>
+> Sin login, el deploy de la API a Railway queda **READY-BLOCKED**. (`flyctl` ausente, `render` ausente, sin Docker local; `vercel`/`gh` sí autenticados.)
+
+Tras `railway login`, desde la raíz del monorepo:
+
+```bash
+# 1. Inicializar proyecto/servicio (una vez)
+railway init
+
+# 2. Configurar build/start del servicio API (panel o railway.json):
+#    Build:  pnpm install --frozen-lockfile && pnpm build:api
+#    Start:  pnpm --filter @smartsense/api start
+
+# 3. Variables del servicio (placeholders — solo en Railway, nunca en el repo):
+#    DATABASE_URL, DIRECT_URL  (Neon staging)
+#    JWT_SECRET, JWT_REFRESH_SECRET  (≥32 chars)
+#    CORS_ORIGIN=https://<preview>.vercel.app   (sin wildcard)
+#    API_PORT, NODE_ENV=production, SERVICE_VERSION=f0-f7
+
+# 4. Desplegar
+railway up
+
+# 5. Migrar la DB de staging (ver docs/audit/phase-8-1-staging-migration.md)
+pnpm db:generate && pnpm db:migrate:deploy   # DIRECT_URL → Neon staging
+pnpm --filter @smartsense/db exec prisma migrate status
+
+# 6. Smoke remoto contra la API ya desplegada
+API_BASE_URL=<STAGING_API_URL> pnpm smoke:api   # 7 pasos OK
+```
+
+---
+
 ## Conclusión
 
-- **Recomendada:** Opción A cuando se autoricen credenciales de hosting de API + Neon staging.
+- **Recomendada:** Opción A / A.1 (Railway) cuando se autoricen credenciales de hosting de API + Neon staging.
 - **Disponible ya:** Opción B (web preview demo) sin dependencias de backend.
-- Mientras no haya autorización/credenciales de hosting de API, **el deploy productivo/staging completo queda PENDIENTE** → **Fase 8 = PARTIAL**.
+- Mientras no haya `railway login` (u otra credencial de hosting de API), **el deploy de la API a staging queda READY-BLOCKED** → **Fase 8.1 = READY-BLOCKED**.
