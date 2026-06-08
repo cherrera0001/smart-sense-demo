@@ -1,0 +1,41 @@
+{
+  "name": "@smartsense/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "seed": "tsx prisma/seed.ts",
+    "studio": "prisma studio",
+    "test": "vitest run",
+    "test:docker": "cross-env SMARTSENSE_DB_TEST_MODE=docker vitest run",
+    "test:external": "cross-env SMARTSENSE_DB_TEST_MODE=external vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.0",
+    "@testcontainers/postgresql": "^10.13.0",
+    "typescript": "^5.7.0",
+    "@smartsense/shared": "workspace:*"
+  }
+}

@@ -1,39 +1,44 @@
 {
-  "name": "smart-sense-demo",
+  "name": "smartsense",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "verify-deck": "node scripts/verify-deck.mjs",
-    "screenshots": "playwright test e2e/screenshots.spec.ts",
-    "screenshots:install": "playwright install chromium"
+  "description": "SmartSense — monorepo SaaS+IoT de gestión energética (spec-driven). Fase 1: base de datos y dominio.",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=8"
   },
-  "dependencies": {
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.0",
-    "date-fns": "^4.0.0",
-    "lucide-react": "^0.468.0",
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "recharts": "^2.15.0",
-    "tailwind-merge": "^2.6.0"
+  "scripts": {
+    "dev": "pnpm --filter @smartsense/web dev",
+    "dev:web": "pnpm --filter @smartsense/web dev",
+    "dev:api": "pnpm --filter @smartsense/api dev",
+    "build": "pnpm -r --if-present build",
+    "build:web": "pnpm --filter @smartsense/web build",
+    "build:api": "pnpm --filter @smartsense/api build",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "test:db": "pnpm --filter @smartsense/db test",
+    "test:db:docker": "pnpm --filter @smartsense/db test:docker",
+    "test:db:external": "pnpm --filter @smartsense/db test:external",
+    "db:generate": "pnpm --filter @smartsense/db generate",
+    "db:migrate": "pnpm --filter @smartsense/db migrate",
+    "db:migrate:deploy": "pnpm --filter @smartsense/db migrate:deploy",
+    "db:seed": "pnpm --filter @smartsense/db seed",
+    "db:studio": "pnpm --filter @smartsense/db studio",
+    "verify:phase1": "pnpm db:generate && pnpm db:migrate && pnpm db:seed && pnpm test:db && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api",
+    "verify:phase1:docker": "pnpm db:generate && pnpm db:migrate && pnpm db:seed && pnpm test:db:docker && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api",
+    "verify:phase1:external": "pnpm db:generate && pnpm db:migrate:deploy && pnpm db:seed && pnpm test:db:external && pnpm typecheck && pnpm lint && pnpm build:web && pnpm build:api",
+    "security:scan-secrets": "node scripts/secret-scan.mjs",
+    "smoke:api": "node scripts/smoke-api.mjs",
+    "verify:staging": "node scripts/verify-staging.mjs",
+    "ci:verify": "pnpm install --frozen-lockfile=false && pnpm -r --if-present typecheck && pnpm -r --if-present lint && pnpm build:api && pnpm build:web && pnpm security:scan-secrets",
+    "ci:test:db": "pnpm db:generate && pnpm test:db"
   },
   "devDependencies": {
-    "@playwright/test": "^1.49.1",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "autoprefixer": "^10.4.0",
-    "babel-loader": "^10.1.1",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^15.0.0",
-    "next-pwa": "^5.6.0",
-    "postcss": "^8.4.0",
-    "tailwindcss": "^3.4.17",
+    "esbuild": "^0.28.0",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0"
   }
 }

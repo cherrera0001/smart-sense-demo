@@ -1,0 +1,35 @@
+# docker-compose.yml — ENTORNO LOCAL / DEV ÚNICAMENTE.
+# Levanta PostgreSQL 16 + TimescaleDB para migración, seeds y tests de integridad de Fase 1.
+# NO usar en producción. Credenciales de desarrollo (no secretas).
+#
+# Uso:
+#   docker compose up -d db        # o: docker-compose up -d db
+#   pnpm db:migrate && pnpm db:seed && pnpm test:db
+#   docker compose down            # (añade -v para borrar el volumen de datos)
+
+services:
+  db:
+    # Imagen TimescaleDB sobre PostgreSQL 16 (incluye la extensión para create_hypertable).
+    # Si se prefiere Postgres puro, cambiar a `postgres:16` — la migración tolera la
+    # ausencia de TimescaleDB (create_hypertable va envuelto en DO/EXCEPTION).
+    image: timescale/timescaledb:latest-pg16
+    container_name: smartsense-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: smartsense
+      POSTGRES_PASSWORD: smartsense_dev
+      POSTGRES_DB: smartsense_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - smartsense_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartsense -d smartsense_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  smartsense_db_data:
+    name: smartsense_db_data

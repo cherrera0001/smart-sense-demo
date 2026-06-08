@@ -1,0 +1,374 @@
+# Desglose de Tareas — SmartSense
+
+> Deriva de `09-implementation-plan/{roadmap,milestones}.md`, `03-data-model/relational-model.md` (21 tablas), `06-backend/services.md`, `04-api/api-overview.md`, `05-frontend/*` y `08-quality/*`.
+> Convención de ID: `T-FNN-NN` (FNN = fase, NN = nº de tarea). Cada tarea: descripción · entregable · dependencias · FR/spec relacionada.
+> **FASE 1 está detallada al máximo por ser la próxima a implementar.** Las fases 2–7 listan tareas accionables de nivel superior.
+> **FASE 0.5 (Brownfield Reconciliation) bloquea la Fase 1** — debe cerrarse con go/no-go aprobado antes de iniciar T-F01-*.
+
+---
+
+## FASE 0.5 — Brownfield Reconciliation (bloquea Fase 1)
+
+> Auditar y reconciliar el repo demo (`github.com/cherrera0001/smart-sense-demo`) contra las specs. Estrategia elegida: **A — Preserve UI, add backend gradually** (+ B-lite). Restricción: solo auditoría/diseño; sin implementar, borrar, mover código, push ni PR.
+
+| ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|
+| T-005-01 | Clonar/sincronizar repo real en carpeta limpia; crear rama `chore/brownfield-spec-reconciliation` | repo clonado + rama (✅ hecho) | FASE 0 | — |
+| T-005-02 | Inventario técnico completo (stack, configs, app/components/lib/docs/scripts) | `docs/audit/brownfield-current-state.md` (✅) | T-005-01 | — |
+| T-005-03 | Mapa rutas actuales (ES) vs rutas objetivo (EN) + decisión idioma/redirects | `docs/audit/routes-reconciliation.md` (✅) | T-005-02 | 05-frontend/routes.md |
+| T-005-04 | Inventario de componentes con decisión keep/refactor/replace/delete/archive | `docs/audit/component-inventory.md` (✅) | T-005-02 | 05-frontend/components.md |
+| T-005-05 | Inventario de mocks/hardcode → fixtures/seed/DEMO_MODE | `docs/audit/mock-data-inventory.md` (✅) | T-005-02 | 03-data-model, 04-api |
+| T-005-06 | Análisis spec-code gap (FR cubiertos/no/parciales; contradicciones; specs a ajustar) | `docs/audit/spec-code-gap-analysis.md` (✅) | T-005-03/04/05 | 01-requirements |
+| T-005-07 | Estrategia de migración (A/B/C → elegir y justificar) | `docs/architecture/migration-strategy.md` (✅) | T-005-06 | roadmap |
+| T-005-08 | Plan de transición frontend (estructura objetivo, mapeo componentes, DEMO_MODE) | `docs/architecture/frontend-transition-plan.md` (✅) | T-005-07 | 05-frontend/* |
+| T-005-09 | Plan de transición backend (monorepo, Prisma/Postgres/Timescale, mock↔API) | `docs/architecture/backend-transition-plan.md` (✅) | T-005-07 | 06-backend/* |
+| T-005-10 | Decisión final go/no-go Fase 1 (aprobación de estrategia + resolución de decisiones abiertas) | acta de cierre + autorización de Cristóbal | T-005-07/08/09 | — |
+
+**Cierre de Fase 0.5:** todos los entregables publicados + T-005-10 aprobado. Recién entonces inician las tareas `T-F01-*`.
+
+---
+
+## FASE 1 — Base de datos y dominio (detallada)
+
+> **Precondición:** FASE 0.5 cerrada (T-005-10 go/no-go aprobado).
+>
+> **Leyenda de estado:** ✅ implementado y versionado / ejecutado en verde · ⏳ pendiente. **Actualización 2026-06-02 (Fase 1.4):** las tareas de runtime (T-F01-29..37) se **ejecutaron en verde contra Neon real** (Vercel, `neondb`) → ✅. Quedan ⏳ solo T-F01-05 (`docker-compose.yml`+EMQX) y T-F01-21 (políticas Timescale: Neon no tiene Timescale → candidatas a Fase 7). Guía: `docs/database/phase-1-external-postgres-verification.md`.
+
+### Setup de monorepo y tooling
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F01-01 | Inicializar monorepo pnpm con workspaces `apps/api`, `apps/web`, `apps/iot-bridge`, `packages/shared`, `packages/db` | `pnpm-workspace.yaml`, `package.json` raíz, estructura de carpetas | — | NFR-040, canon §Stack |
+| ✅ | T-F01-02 | Inicializar git (`.gitignore` node/prisma/env, rama base + rama de trabajo) y convención de commits | repo git con primer commit de scaffolding | T-F01-01 | NFR-039 |
+| ✅ | T-F01-03 | Configurar TypeScript base + tsconfig compartido en `packages/shared`; ESLint + Prettier; scripts `lint`/`typecheck` | tooling de calidad ejecutable | T-F01-01 | NFR-039 |
+| ✅ | T-F01-04 | Configurar Vitest + Testcontainers (Postgres 16 + TimescaleDB) para suite `db` (con guard de Docker) | runner de tests de integridad contra DB efímera | T-F01-01 | test-plan §6 |
+| ⏳ | T-F01-05 | Configurar Docker Compose de desarrollo (Postgres+Timescale, EMQX) | `docker-compose.yml` dev | T-F01-01 | canon §Stack, NFR-041 |
+
+> T-F01-05: snippet de Docker Compose (Postgres+Timescale) documentado en `docs/database/phase-1-db-setup.md`; `docker-compose.yml` en raíz + EMQX quedan pendientes (EMQX no aplica hasta Fase 3).
+
+### Prisma + Postgres + Timescale
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F01-06 | Instalar y configurar Prisma en `packages/db`; `DATABASE_URL` por env; datasource Postgres | `packages/db/prisma/` configurado | T-F01-05 | NFR-006/041 |
+| ✅ | T-F01-07 | Decidir e implementar generación de UUIDv7 app-side (helper en `packages/shared`) | util `uuidv7()` + default de IDs | T-F01-03 | canon §Convenciones |
+| ✅ | T-F01-08 | Habilitar extensión TimescaleDB y `citext` en la migración (SQL raw) | extensiones activas | T-F01-06 | relational-model, users.email citext |
+
+### schema.prisma (21 tablas)
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F01-09 | Modelar identidad/tenant: `users`, `organizations`, `memberships` (enums role/status; UNIQUE email citext y (user_id,organization_id)) | modelos Prisma | T-F01-06/07 | FR-AUTH-001/006; relational-model |
+| ✅ | T-F01-10 | Modelar sitios: `installations`, `installation_profiles` (1↔1, CHECK occupants/declared_power_kw ≥0) | modelos Prisma | T-F01-09 | FR-ONB-008, FR-PROF-001..004 |
+| ✅ | T-F01-11 | Modelar kits/devices: `energy_kits` (UNIQUE qr_code, enum status), `device_categories`, `devices` (UNIQUE(kit_id,external_ref), enum state), `device_pairings` (enum pairing_status) | modelos Prisma | T-F01-10 | FR-ONB-001..005 |
+| ✅ | T-F01-12 | Modelar telemetría: `telemetry_readings` (campos del contrato, CHECK no-negativos y power_factor∈[-1,1], enum ingestion_status, UNIQUE event_hash) — sin PK Prisma estándar, PK lógica (device_id,source_timestamp,reading_id) | modelo Prisma + nota hypertable | T-F01-11 | FR-DASH-001, NFR-028/029/031; 07-iot |
+| ✅ | T-F01-13 | Modelar agregados: `energy_aggregates` (enum granularity, CHECK energy_kwh/cost_clp ≥0, UNIQUE(installation_id,device_id,category_id,granularity,bucket_start)) | modelo Prisma | T-F01-11 | FR-DASH-002, FR-REP-*, NFR-032 |
+| ✅ | T-F01-14 | Modelar tarificación: `distributors`, `tariffs` (CHECK precios ≥0, UNIQUE(distributor_id,code,valid_from)), `electricity_bills` (CHECK period_end≥period_start, montos/consumo ≥0, enum bill_status) | modelos Prisma | T-F01-10 | FR-BILL-001..008, FR-SET-004 |
+| ✅ | T-F01-15 | Modelar alertas/recomendaciones: `alerts` (enums type/severity/status), `recommendations` (enum source/status) | modelos Prisma | T-F01-13 | FR-ALRT-*, FR-REC-* |
+| ✅ | T-F01-16 | Modelar control: `control_actions` (enums type/status), `control_schedules`, `consumption_limits` (CHECK limit_kwh>0, limit_power_w>0, pre_alert_pct 1..100, enum window/action_on_exceed) | modelos Prisma | T-F01-11 | FR-CTRL-001..009 |
+| ✅ | T-F01-17 | Modelar transversales: `notifications` (enum channel), `audit_logs` (append-only, ip inet) | modelos Prisma | T-F01-09 | FR-SET-005, NFR-013/014 |
+| ✅ | T-F01-18 | Definir soft delete (`deleted_at`) en organizations/installations/energy_kits/devices y timestamps created/updated en todas | columnas comunes consistentes | T-F01-09..17 | canon §Convenciones, NFR-011 |
+
+### Migración inicial, hypertable, constraints y triggers
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F01-19 | Generar migración inicial Prisma con las 21 tablas, enums (nativos Postgres), índices del relational-model | migración SQL versionada (`0001_init`, 592 líneas) | T-F01-09..18 | NFR-041; relational-model |
+| ✅ | T-F01-20 | Añadir paso SQL raw a la migración: `create_hypertable('telemetry_readings','source_timestamp')` (en DO/EXCEPTION, fallback si no hay Timescale) | hypertable creada | T-F01-12/19 | NFR-026; canon §Telemetría |
+| ⏳ | T-F01-21 | Configurar políticas Timescale: compresión de chunks antiguos y retención (cruda ≥90d, agregados ≥24m) | políticas activas | T-F01-20 | NFR-026/033 |
+| ✅ | T-F01-22 | Constraint parcial: a lo sumo una fila `energy_kits.status='active'` por `serial` (índice único parcial) | constraint en migración | T-F01-11/19 | FR-ONB-002 |
+| ✅ | T-F01-23 | Trigger append-only en `audit_logs`: bloquea UPDATE y DELETE | trigger + función en migración | T-F01-17/19 | NFR-014, INV-8 |
+| ✅ | T-F01-24 | Verificar índices de tenant/serie: `(organization_id)`, `(installation_id,granularity,bucket_start)`, `(installation_id,status)` alerts, `(device_id,requested_at)` control_actions, `(user_id,read_at)` notifications | índices presentes en migración | T-F01-19 | NFR-027 |
+
+> T-F01-21: las políticas de compresión/retención de Timescale no están en `0001_init`; quedan pendientes (NFR-026/033, candidatas a Fase 7 §hardening de datos).
+
+### Seeds
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F01-25 | Seed de `device_categories` (refrigeración, climatización, electrónica, iluminación, lavado, con typical_power_w) | script seed idempotente | T-F01-19 | FR-BRK-002 |
+| ✅ | T-F01-26 | Seed de `distributors` (catálogo CL: CGE, Enel) | script seed | T-F01-19 | FR-BILL-003 |
+| ✅ | T-F01-27 | Seed de `tariffs` demo (BT-1 CGE, BT-1A Enel; energy_price_clp_kwh, valid_from) ligadas a distribuidoras | script seed | T-F01-26 | FR-BILL-004, FR-SET-004 |
+| ✅ | T-F01-28 | Orquestar seed unificado (`pnpm db:seed`) idempotente; catálogo global + datos demo bajo `organizations.is_demo=true` | comando de seed | T-F01-25/26/27 | NFR-041 |
+
+> Seeds: escritos y versionados (`seed.ts`). Su **ejecución** real (`pnpm db:seed`) está cubierta por T-F01-29 ⏳ (pendiente de DB).
+
+### Tests de integridad (suite `db`)
+
+> Todos los tests de integridad están escritos, versionados y **ejecutados en verde contra Neon real** (2026-06-02, modo `external`, `test:db:external` 18/18 PASS). `setup.ts` soporta modo dual `docker`/`external`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F01-29 | Test: migraciones aplican desde cero + seeds OK en DB real (Neon) | test verde | T-F01-19/28 | NFR-041 |
+| ✅ | T-F01-30 | Test integridad referencial: FK inexistente (device con kit_id falso, telemetría con device_id falso) → error | test verde | T-F01-29 | INV-2, NFR-030 |
+| ✅ | T-F01-31 | Test no-negatividad: insert negativo en consumption_kwh/total_clp/active_power_w/energy_kwh/energy_price_clp_kwh → rechazado; power_factor fuera de [-1,1] → rechazado; pre_alert_pct fuera 1..100 → rechazado | test verde | T-F01-29 | NFR-031 |
+| ✅ | T-F01-32 | Test unicidad: email, (user_id,organization_id), qr_code, (kit_id,external_ref), event_hash, clave de agregado, (distributor_id,code,valid_from) | test verde | T-F01-29 | NFR-028, relational-model |
+| ✅ | T-F01-33 | Test coherencia fechas: electricity_bills period_end<period_start → rechazado | test verde | T-F01-29 | FR-BILL-002/005 |
+| ✅ | T-F01-34 | Test kit único activo / restricciones de catálogo verificadas en seed (incluye corrección de `distributors.code` único completo) | test verde | T-F01-22 | FR-ONB-002 |
+| ✅ | T-F01-35 | Test append-only: UPDATE/DELETE sobre audit_logs → bloqueado por trigger | test verde | T-F01-23 | NFR-014, INV-8 |
+| ✅ | T-F01-36 | Test idempotencia por event_hash (insert duplicado → falla UNIQUE) — sobre Neon sin Timescale, `telemetry_readings` como tabla normal (fallback `DO/EXCEPTION`) | test verde | T-F01-20 | NFR-028, INV-6 |
+| ✅ | T-F01-37 | Actualizar `08-quality/traceability-matrix.md` (y `validation-matrix.md`): INV-6/8, NFR-026/028/029/031/032/041 → VERIFICADO/PASS (runtime Fase 1.4) | matrices actualizadas | T-F01-29..36 | criterio de cierre FASE 1 |
+
+> **Resumen Fase 1:** estructura ✅ **y verificada en runtime contra Neon real ✅** (migrate/seed/`test:db:external` 18/18 verde, 21/21 tablas, T-F01-29..37). Quedan ⏳ solo T-F01-05 (`docker-compose.yml`+EMQX, no aplica hasta Fase 3) y T-F01-21 (políticas Timescale — Neon no tiene Timescale, candidatas a Fase 7). **Fase 1 cerrada en PASS.**
+
+---
+
+## FASE 1.2 — External PostgreSQL Runtime Verification
+
+> Destrabar el cierre runtime de Fase 1 sin Docker local, verificando migración/seed/tests contra una **PostgreSQL externa de desarrollo**.
+> **Estados posibles:** ✅ PASS · ⏳ READY-BLOCKED · ❌ FAIL. **Estado actual de la subfase: ✅ PASS** — la `DATABASE_URL` dev la proveyó Neon (Vercel); ejecución cerrada en Fase 1.4.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-012-01 | Soporte de **modo dual** en la suite `db` (`SMARTSENSE_DB_TEST_MODE` = `docker`/`external`), resolución de modo y estados explícitos PASS/FAIL/BLOCKED sin skip silencioso | `packages/db/tests/setup.ts` (`resolveTestDbMode`, `startExternalDb`, `BLOCKED_MESSAGE`) | T-F01-04 | runtime-gates GATE-DB-004 |
+| ✅ | T-012-02 | **Scripts de verificación**: `db:migrate:deploy`, `test:db:docker`/`test:db:external`, agregador `verify:phase1[:docker\|:external]` (`db:generate → db:migrate:deploy → db:seed → test:db:external → typecheck → lint → build:web → build:api`) | scripts en `package.json` raíz + `packages/db` | T-012-01 | NFR-041, runtime-gates |
+| ✅ | T-012-03 | **Guard de seguridad** anti-producción (`assertSafeExternalUrl`: rechaza `prod\|production\|live\|primary\|master\|main`; exige señal `dev\|test\|staging\|sandbox\|smartsense_dev` o `SMARTSENSE_DB_ALLOW_UNSAFE=1`) + `maskDbUrl()` | guard + enmascarado en `setup.ts` | T-012-01 | NFR-006, GATE-SEC-001 |
+| ✅ | T-012-04 | **Docs**: gates de runtime, guía external (proveedores/comandos/seeds/limpieza), precheck; actualización de `phase-1-runtime-verification.md`, `phase-1-summary.md`, `phase-1-db-setup.md`, matrices | `specs/08-quality/runtime-gates.md`, `docs/database/phase-1-external-postgres-verification.md`, `docs/audit/phase-1-external-runtime-precheck.md` (+ updates) | T-012-01/02/03 | runtime-gates, traceability-matrix |
+| ✅ | T-012-05 | **Ejecución contra Neon real (Fase 1.4)**: `pnpm verify:phase1:external` GATE_EXIT=0 → GATE-DB-002/003/004 en PASS; resultados registrados y matrices a VERIFICADO/PASS | gates DB en PASS + matrices | T-012-01..04, `DATABASE_URL` Neon | criterio de cierre Fase 1, GATE-SDD-001 |
+
+> **Resumen Fase 1.2:** soporte external + guard + scripts + docs ✅; ejecución contra DB real ✅ (cerrada en Fase 1.4 con Neon). Fase 1 cierra en PASS y Fase 2 queda AUTORIZABLE.
+
+---
+
+## FASE 1.4 — MER ↔ DB real (Neon vía Vercel) → PASS
+
+> Ejecución del pipeline de runtime de Fase 1 contra la PostgreSQL real de Neon (Vercel `cherrera0001s-projects/smart-sense-demo`, Development, `neondb`, host enmascarado `ep-lucky-pine-***.neon.tech`). **Estado: ✅ PASS (2026-06-02).** Solo documentación + dos fixes de código ya aplicados (alcance acotado).
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-014-01 | Configurar entorno Neon (Vercel): `DATABASE_URL`/`DIRECT_URL` **directas/unpooled** (evita pgbouncer); guard resuelto con `SMARTSENSE_DB_ALLOW_UNSAFE=1` (DB dev `neondb`, autorizado) | env de sesión / `packages/db/.env` (gitignored) + precheck | T-012-04 | GATE-SEC-001, runtime-gates |
+| ✅ | T-014-02 | `pnpm db:migrate:deploy` contra Neon | "All migrations…applied"; `migrate status` "up to date"; 21/21 tablas | T-014-01 | NFR-041, GATE-DB-002 |
+| ✅ | T-014-03 | **Fix bug DB:** `distributors.code` índice único parcial (`WHERE code IS NOT NULL`) → `42P10` en `ON CONFLICT(code)`; corregido a índice único **completo** (`schema.prisma` + `0001_init`) + `migrate reset --force` | migración corregida | T-014-02 | relational-model (`code UNIQUE`) |
+| ✅ | T-014-04 | `pnpm db:seed` contra Neon (catálogo global + demo `is_demo=true`); conteos verificados | seed OK + conteos | T-014-03 | GATE-DB-003, NFR-041 |
+| ✅ | T-014-05 | **Fix bug test (Windows):** `constraints.test.ts` `execFileSync('npx.cmd')` → `EINVAL`; migrado a `execSync('npx tsx "<path>"')` | test corregido | T-014-04 | GATE-DB-004 |
+| ✅ | T-014-06 | Gate verde: `pnpm verify:phase1:external` GATE_EXIT=0 (`test:db:external` 18/18, typecheck/lint/build:web/build:api); docs y matrices actualizadas | gates PASS + docs | T-014-02..05 | criterio de cierre Fase 1, GATE-SDD-001 |
+
+> **Resumen Fase 1.4:** pipeline completo verde contra Neon real (GATE_EXIT=0); 21/21 tablas; 2 fixes (distributors único completo, test `execSync`). **Fase 1 cerrada en PASS; Fase 2 AUTORIZABLE.** Evidencia: `docs/audit/phase-1-{mer-db-integration-precheck,real-db-schema-verification,vercel-neon-seed-verification,vercel-neon-runtime-verification}.md`.
+
+---
+
+## FASE 2 — API base (implementada)
+
+> **Estado: ✅ PASS (2026-06-02).** API Fastify 5 + `@fastify/jwt` + bcryptjs + Zod + Prisma. **5 módulos** (auth, organizations, installations, devices, onboarding), **19 endpoints**, **39/39 tests PASS** contra Neon real (`pnpm --filter @smartsense/api test`: auth 6, orgs 4, installations 8, devices 13, onboarding 8).
+> **Leyenda:** ✅ implementado y verificado en verde.
+> **Desviaciones documentadas:** (1) **bcryptjs (12 rounds)** en vez de Argon2id del canon — swap a `@node-rs/argon2` trivial (aislado en lib `password`); (2) **JWT único a 7d** en vez de access ≤15min + refresh rotado; (3) **sin throttling** de auth aún → ambos diferidos a Fase 7 (hardening). Detalle: `docs/implementation/phase-2-summary.md`, `docs/audit/phase-2-openapi-implementation-audit.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F02-01 | Bootstrap Fastify 5 + plugins decorados en instancia raíz: `prisma`, `request-id`, `error-handler` uniforme `{code,message,details,traceId}`, `auth` (JWT, sub=userId, exp 7d). Libs compartidas `errors`/`access`/`audit`/`password` | servidor base + plugins + libs | T-F01-* | NFR-007; 04-api/error-model |
+| ✅ | T-F02-02 | Tenant-scope obligatorio por `organization_id` vía `assertOrgAccess`/`assertInstallationAccess`/`assertDeviceAccess` (acceso ajeno → `CROSS_TENANT_DENIED`) | lib `access` + scoping en servicios | T-F02-01 | NFR-001/040 |
+| ✅ | T-F02-03 | Módulo `auth` (routes/service/schemas/test): `POST /auth/register`, `/auth/login`, `/auth/logout`, `GET /auth/me`. Password bcryptjs 12 rounds; `passwordHash` nunca en respuestas. **Desviación:** Argon2id pendiente; JWT 7d sin refresh rotado; throttling pendiente | endpoints `/auth/*` (6 tests) | T-F02-01 | FR-AUTH-001..004/010, NFR-002/004 |
+| ✅ | T-F02-04 | Motor RBAC (`ROLES` manage/operate/read; roles owner/admin/operator/viewer) como guard; viewer escribe → 403 | middleware authz | T-F02-03 | NFR-003, FR-AUTH-009 |
+| ✅ | T-F02-05 | Módulo `organizations`: `GET/POST /organizations`, `GET /organizations/{id}`; audit en create org | endpoints (4 tests) | T-F02-03 | FR-AUTH-001/006/007/008, FR-SET-008 |
+| ✅ | T-F02-06 | Módulo `installations`: `GET/POST /installations`, `GET/PATCH /installations/{id}`; audit en create+update | endpoints (8 tests) | T-F02-04 | FR-ONB-008, FR-SET-002/004 |
+| ✅ | T-F02-07 | Módulo `onboarding`: `POST /onboarding/kit/scan`, `/kit/claim`, `/devices/pair`, `GET /onboarding/status`; audit en claim kit y pair device; 409 `KIT_ALREADY_CLAIMED` | endpoints (8 tests) | T-F02-06 | FR-ONB-001..008 |
+| ✅ | T-F02-08 | Módulo `devices`: `GET /installations/{installationId}/devices`, `POST /devices`, `GET/PATCH /devices/{id}`; audit en create+update; 409 dup `(kitId,externalRef)` | endpoints (13 tests) | T-F02-06 | FR-ONB-005, FR-SET-003 |
+| ✅ | T-F02-09 | `writeAudit` (append-only) integrado en register/login/create org/create+update installation/create+update device/claim kit/pair device | lib `audit` + integración | T-F02-02 | NFR-013/014 |
+| ✅ | T-F02-10 | Tests integ (happy/401/403 cross-tenant/403 RBAC viewer/409/422/sin passwordHash) 39/39 PASS contra Neon; auditoría OpenAPI ↔ código 1:1 (manual) | suite verde + `phase-2-openapi-implementation-audit.md` | T-F02-03..08 | test-plan §3/§5/§7 |
+
+> **Resumen Fase 2:** foundation + 5 módulos + tests + auditoría OpenAPI ✅, verificado contra Neon real (39/39). `app.ts` NO registra telemetry/dashboard/reports/alerts/recommendations/control (Fase 3+). DEMO_MODE intacto (`apps/web` sin cambios visuales; scaffold `apps/web/lib/api/client.ts` no usado por la UI). **Fase 2 cerrada en PASS; Fase 3 AUTORIZABLE.**
+
+## FASE 3 — IoT y telemetría (implementada)
+
+> **Estado: ✅ PASS (2026-06-03, `feat/phase-3-iot-telemetry`).** Módulo `telemetry` (`apps/api/src/modules/telemetry/`), **3 endpoints** bajo JWT, agregación horaria inline, shared schemas/hash y `iot-bridge` en dry-run. **Sin migración nueva** (reutiliza `telemetry_readings`/`energy_aggregates` de Fase 1). **Tests:** API **56/56** (39 Fase 2 + 17 telemetría), iot-bridge **23/23**, DB **18/18** contra Neon real.
+> **Leyenda:** ✅ implementado y verificado en verde.
+> **Desviaciones documentadas:** `event_hash` usa `device_id` (no `kit_qr`/`device_ref` del `.md` MQTT §5); telemetría **NO** audita (volumen); **agregación inline** (worker real diferido); **device auth = JWT de usuario** (API key/kit-scope → Fase 7); **sin costeo CLP** (BillingService/TariffService → Fase 4+); MQTT productivo fuera de alcance (bridge en dry-run). Detalle: `docs/implementation/phase-3-summary.md`, `docs/audit/phase-3-{spec-readiness,telemetry-openapi-audit,telemetry-runtime-verification}.md`, `docs/iot/phase-3-iot-bridge.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F03-01 | Shared: `telemetryIngestSchema`, `telemetryRangeQuerySchema`, `telemetryIngestResult` + `computeEventHash` (sha256 `device_id\|source_timestamp\|canonical(metrics)`, `packages/shared/src/telemetry/hash.ts`, `node:crypto`; +`@types/node`) | contrato compartido | T-F02-* | NFR-028, INV-6; 07-iot |
+| ✅ | T-F03-02 | `POST /iot/telemetry` (JWT, `assertInstallationAccess(operate)`): UPSERT idempotente por `event_hash` UNIQUE → `accepted`/`duplicate`; 404 device inexistente, 403 cross-tenant, 409 `DEVICE_KIT_MISMATCH`, 422 negativos/`power_factor`/`INVALID_TIMESTAMP`; capability meter (rechaza `meter===false`); `received_timestamp` backend; post-ingest actualiza device (`lastSeenAt`/`state=online`) | endpoint de ingesta | T-F03-01 | FR-DASH-001, NFR-028/030/031, INV-2/6/7 |
+| ✅ | T-F03-03 | `GET /installations/{installationId}/telemetry/latest` (`read`): `{ latestReading\|null, deviceCount, receivedTimestamp\|null }`, empty state OK | endpoint | T-F03-02 | FR-DASH-001 |
+| ✅ | T-F03-04 | `GET /installations/{installationId}/telemetry/range` (`read`): query `{from,to,device_id?,limit(500/5000)}`; 422 `from>to`; device ajeno → 4xx | endpoint | T-F03-02 | FR-DASH-001, FR-REP-005, FR-BRK-006 |
+| ✅ | T-F03-05 | `energy-aggregation.service.ts`: `upsertHourBucket`/`upsertDayBucket` → `energy_aggregates` (granularity hour/day, `energy_kwh=SUM/1000`, `peak_power_w=MAX`), idempotente por unique key; **inline** tras ingest (solo `hour`) | agregación | T-F03-02 | NFR-032 |
+| ⏳ | T-F03-06 | BillingService.computeCost + TariffService (CLP backend, null sin tarifa) — **diferido Fase 4+** (agregados sin `cost_clp`) | costeo | T-F03-05 | INV-4, FR-DASH-003 |
+| ⏳ | T-F03-07 | ReportService daily/weekly/monthly/last-three-months + endpoints — **diferido Fase 4** | endpoints | T-F03-05/06 | FR-REP-001..005 |
+| ✅ | T-F03-08 | `iot-bridge` (`apps/iot-bridge`) dry-run: `config.ts` (+`maskSecret`), `telemetry-contract.ts` (`validateIngest`), `normalizer.ts` (MQTT/plano → DTO, `event_hash`, rechaza negativos/`power_factor`/futuro), `http-forwarder.ts` (POST con Bearer), `dry-run.ts`, `mqtt-client.ts` (import dinámico, no conecta salvo `mqtt`); fixtures valid/duplicate/invalid | bridge dry-run | T-F03-01 | NFR-008; 07-iot |
+| ✅ | T-F03-09 | Suite verde contra Neon: API **56/56** (17 telemetría: ingest accepted/duplicate, 404/403/409/422, latest OK/empty, range OK/from>to/device ajeno, agregación crea `energy_aggregates`, 0 side-effects) + iot-bridge **23/23** (normalizer 10/contract 6/forwarder 7); auditoría OpenAPI ↔ código 1:1 (manual) | suites + `phase-3-telemetry-openapi-audit.md` | T-F03-02..05/08 | NFR-028/030/031, test-plan §6 |
+
+> **Resumen Fase 3:** ingestión idempotente + lectura (latest/range) + agregación horaria inline + `iot-bridge` dry-run ✅, verificado contra Neon real (API 56/56, bridge 23/23, DB 18/18). Diferidos a Fase 4+: costeo CLP (T-F03-06) y reportes (T-F03-07). MQTT productivo y worker de agregación real: fase posterior. **Fase 3 cerrada en PASS; Fase 4 AUTORIZABLE.**
+
+## FASE 4 — Dashboard / reportes / breakdown (backend) + frontend
+
+> **Estado backend: ✅ PASS (2026-06-03, `feat/phase-4-dashboard-reports`).** **6 endpoints** de lectura agregada bajo JWT + `assertInstallationAccess(read)` + `BillingService` (costeo CLP solo energía, BR-031), sobre Neon real. **Sin migración nueva** (reutiliza `telemetry_readings`/`energy_aggregates`/`devices`/`device_categories`/`installations`/`tariffs`/`electricity_bills`/`distributors`). **Tests:** API **92/92** (39 Fase 2 + 17 telemetría + 11 billing + 7 dashboard + 9 reports + 9 breakdown), iot-bridge **23/23**, DB **18/18**.
+> **Leyenda:** ✅ implementado y verificado en verde · ⏳ pendiente (entrega frontend posterior).
+> **Desviaciones/limitaciones documentadas:** costeo solo energía (sin cargo fijo/demanda/horario); tiempos **UTC** (no tz local aún); breakdown solo dispositivos medidos (no NILM); `alerts_pending_count` fijo 0 (Fase 5); respuestas **superset** del `openapi.yaml` (extensión contract-first; paths conservados). Detalle: `docs/implementation/phase-4-summary.md`, `docs/audit/phase-4-{spec-readiness,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-4-dashboard-reports-breakdown.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F04-B1 | `BillingService` (`apps/api/src/modules/billing/`): `getEffectiveTariffForInstallation` (`installation.tariffId` → boleta `confirmed` más reciente → null), `estimateEnergyCostClp` (`Math.round(energy_kwh * energy_price_clp_kwh)` entero CLP, `estimated=true`, **null sin tarifa — BR-031**; solo energía), `estimateSeriesCostClp` (11 tests) | servicio de costeo | T-F03-05 | INV-4, BR-031, FR-DASH-003, FR-REP-* |
+| ✅ | T-F04-B2 | GET `/installations/{id}/dashboard` (`read`): `current_power_w`, `today/month_energy_kwh`, `today/month_cost_clp`, `comparison{previous_period_energy_kwh,delta_percent}`, `latest_reading_timestamp`, `device_count`, `alerts_pending_count=0` (literal), `data_status` (live/stale>15min/empty) (7 tests) | endpoint | T-F04-B1, T-F03-05 | FR-DASH-001..007 |
+| ✅ | T-F04-B3 | GET `/installations/{id}/reports/{daily,weekly,monthly,last-three-months}` (`read`): `points[{bucket_start,energy_kwh,cost_clp,peak_power_w}]` (buckets vacíos incluidos), `totals` (derivados de points → cuadran), `data_status` (complete/partial/empty) (9 tests) | endpoints | T-F04-B1, T-F03-05 | FR-REP-001..004 |
+| ✅ | T-F04-B4 | GET `/installations/{id}/breakdown?from&to&group_by` (`read`): `group_by` device(default)/category; rango default 7 días; `items[{id,name,category,energy_kwh,cost_clp,percentage}]` (solo devices medidos, no NILM), `total_energy_kwh`/`total_cost_clp`, `data_status`; percentage=energy/total*100 (~100) | endpoint | T-F04-B1, T-F03-05 | FR-BRK-001..005 |
+| ✅ | T-F04-B5 | Estrategia de datos común: agregados preferidos → fallback `telemetry_readings` (SUM/1000, MAX), sin mezclar fuentes; tiempos UTC | lógica de cómputo | T-F04-B2..B4 | NFR-032 |
+| ✅ | T-F04-B6 | Shared schemas `packages/shared/src/schemas/{dashboard,reports,breakdown}.ts`; web client `energyApi.getDashboard/getReports*/getBreakdown` **preparatorios** (no usados por UI; DEMO_MODE intacto) | contratos + client | T-F04-B2..B4 | 04-api |
+| ✅ | T-F04-B7 | Suite verde contra Neon: API **92/92** (totals cuadran, percentages ~100, cost null sin tarifa, empty states, **0 side-effects** alerts/recs/control, tenant 403); auditoría OpenAPI ↔ código (paths 1:1, shapes superset) manual | suites + `phase-4-openapi-implementation-audit.md` | T-F04-B1..B6 | test-plan §3/§5 |
+| ⏳ | T-F04-01 | Layouts `(auth)`/`(onboarding)`/`(app)`, AppSidebar, header + InstallationSwitcher, middleware/guards | shell | T-F02-* | routes.md |
+| ⏳ | T-F04-02 | Providers React Query + Zustand (instalación activa en estado, no URL) | providers | T-F04-01 | routes.md §1 |
+| ⏳ | T-F04-03 | Estados transversales: Skeleton, EmptyState, ErrorState, OfflineBanner | componentes | T-F04-02 | NFR-018, FR-DASH-007 |
+| ⏳ | T-F04-04 | `/dashboard`: ConsumptionGauge, CostCard, KitStatusIndicator, AlertSummaryCard + WebSocket vivo (consume T-F04-B2) | página | T-F04-03, T-F04-B2 | FR-DASH-001..007, NFR-022 |
+| ⏳ | T-F04-05 | `/reports`: ReportChart, TimeRangeSelector, MetricToggle (consume T-F04-B3) | página | T-F04-03, T-F04-B3 | FR-REP-001..005 |
+| ⏳ | T-F04-06 | UI onboarding: QRScanner, SegmentSelector, OnboardingStepper, ProfileForm*, BillUploader, BillDataForm, DistributorSelect/TariffForm | páginas onboarding | T-F04-03, T-F02-07 | FR-ONB/PROF/BILL |
+| ⏳ | T-F04-07 | RTL estados (loading/empty/error/offline) + e2e dashboard/onboarding + Lighthouse smoke | suite verde | T-F04-04..06 | NFR-018/022/024 |
+
+> **Resumen Fase 4:** backend de lectura agregada (dashboard/reports/breakdown) + `BillingService` (costeo CLP solo energía, BR-031) ✅ **PASS** contra Neon real (API 92/92, sin migración, 0 side-effects, tenant 403, empty states, totals cuadran, percentages ~100, cost null sin tarifa). DEMO_MODE intacto (web client preparatorio). Pendiente (entrega frontend posterior): shell/UI en vivo (T-F04-01..07). **Fase 5 AUTORIZABLE.**
+
+## FASE 5 — Alertas y recomendaciones (backend implementado)
+
+> **Estado backend: ✅ PASS (2026-06-04, `feat/phase-5-alerts-recommendations`).** **3 endpoints** (alerts list/review, recommendations list) bajo JWT + tenant-scope, motor interno de **5 reglas** de alertas con dedup, derivación de recomendaciones desde alertas (BR-031), `alerts_pending_count` real en dashboard y **migración aditiva 0002**, sobre Neon real. **Tests:** API **114/114** (+ alerts 13, recommendations 8, dashboard regresión), iot-bridge **23/23**, DB **18/18**.
+> **Leyenda:** ✅ implementado y verificado en verde · ⏳ pendiente (entrega frontend/notificaciones posterior).
+> **Reconciliación canon=persistencia:** alert.type 4 canónicos + subtype en `context`; `detected_at`=`created_at`, `metadata`=`context`; recommendation status `new`↔`active`, priority int↔enum, `type`/`estimated_saving_kwh` vía migración 0002. **Desviaciones/limitaciones documentadas:** sin scheduler real (evaluación es función interna); UTC; sin `estimatedImpactClp` en alertas; respuestas **superset** del `openapi.yaml`. Detalle: `docs/implementation/phase-5-summary.md`, `docs/audit/phase-5-{precheck,spec-readiness,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-5-alerts-recommendations.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F05-00 | Migración **aditiva 0002** (`recommendations.type` text + `estimated_saving_kwh` numeric(14,4) + CHECK no-neg; no altera enums ni datos); `migrate deploy` OK contra Neon | migración SQL versionada | T-F01-15 | NFR-041; relational-model §Notas Fase 5 |
+| ✅ | T-F05-01 | `AlertEvaluationService.evaluateInstallationAlerts` (**función interna**): 5 reglas basadas en evidencia con dedup (ventana 24h: skip si existe `open` igual installation+device+type) — `high_consumption`/`projection_risk`→`over_budget`(subtype), `device_high`→`high_device`, `offline`, `anomaly`; sin evidencia/baseline → no alerta; UTC; 0 side-effects | servicio de evaluación | T-F03-05, T-F04-B1 | FR-ALRT-001..006 |
+| ✅ | T-F05-02 | Módulo `alerts`: GET `/installations/{id}/alerts` (`read`; query status/severity/from/to/limit, default open; **lectura pura**) + PATCH `/alerts/{id}/review` (RBAC `ROLES.operate`, viewer→403; `reviewed_at`/`reviewedBy`; `audit_log` `'alert.review'`; no borra) | endpoints (13 tests) | T-F05-01 | FR-ALRT-005, FR-DASH-006 |
+| ✅ | T-F05-03 | `RecommendationService.generateForAlert` + módulo `recommendations`: GET `/installations/{id}/recommendations` (`read`; status active/dismissed/applied/all, default active). 1 recomendación/alerta (`source='alert'`); `estimated_saving_kwh`=10% del exceso observado (null si no reducible); `estimated_saving_clp` vía BillingService (null sin tarifa, BR-031); textos sin "garantizado"; dedup | servicio + endpoint (8 tests) | T-F05-02, T-F04-B1 | FR-REC-001..005 |
+| ✅ | T-F05-04 | `DashboardService.alerts_pending_count` **real** (count `alerts status=open`; reviewed/dismissed no cuentan; leer no crea) — antes literal 0 | dashboard actualizado | T-F05-02, T-F04-B2 | FR-DASH-006 |
+| ✅ | T-F05-05 | Shared: `alerts.ts` extendido + `recommendations.ts` nuevo + `dashboard.ts` (`alerts_pending_count` literal 0 → number); web client `insightsApi.getAlerts/reviewAlert/getRecommendations` **preparatorios** (no usados por UI; DEMO_MODE intacto) | contratos + client | T-F05-02/03 | 04-api |
+| ✅ | T-F05-06 | Suite verde contra Neon: API **114/114** (empty states, tenant 403, RBAC viewer 403 en review, audit en review, dedup alertas/recomendaciones, sin baseline→no alerta, offline, savings null sin tarifa/number con tarifa, textos sin "garantizado", **0 control_actions/0 side-effects**, dashboard count real); auditoría OpenAPI ↔ código (paths 1:1, shapes superset) manual | suites + `phase-5-openapi-implementation-audit.md` | T-F05-00..05 | test-plan §3/§5/§7 |
+| ⏳ | T-F05-07 | `NotificationService` (in_app/email/push) para alertas — **diferido** (fase posterior) | servicio | T-F05-02 | FR-SET-005 |
+| ⏳ | T-F05-08 | Frontend `/breakdown` (DeviceBreakdownChart) y `/alerts` (AlertList, SeverityBadge, AlertFilters, RecommendationCard) — **diferido** (entrega frontend posterior) | páginas | T-F04-01.., T-F05-02/03 | FR-BRK/ALRT/REC |
+
+> **Resumen Fase 5:** motor de alertas (5 reglas + dedup, función interna) + lectura/review de alertas (RBAC + audit) + derivación/lectura de recomendaciones (BR-031) + `alerts_pending_count` real + migración aditiva 0002 ✅ **PASS** contra Neon real (API 114/114, 0 side-effects, tenant 403, viewer 403 en review). DEMO_MODE intacto (web client preparatorio). Pendiente (fase posterior): `NotificationService` (T-F05-07) y UI (T-F05-08). El `/breakdown` ya se entregó en Fase 4 (T-F04-B4). **Fase 6 AUTORIZABLE.**
+
+## FASE 6 — Control (backend implementado · dry-run)
+
+> **Estado backend: ✅ PASS (2026-06-04, `feat/phase-6-device-control`).** **9 endpoints** en `apps/api/src/modules/control/` bajo JWT + `assertDeviceAccess`, **todos en dry-run** (sin downlink físico ni MQTT; `control-state` lógico/simulado; schedules/limits no ejecutan). **Migración aditiva 0003** (`control_actions.idempotency_key`+`dry_run`+UNIQUE parcial; no altera enums ni datos). **Tests:** API **140/140** (+ 26 control), iot-bridge **23/23**, DB **18/18**.
+> **Leyenda:** ✅ implementado y verificado en verde · ⏳ pendiente (downlink físico / automatización / frontend → fase futura).
+> **Reconciliación canon=persistencia:** action `type`; status `dry_run` derivado (persiste `success`+`dry_run=true`); `value/source/reason` en `payload`; schedule `name/value/cron/starts_at/ends_at` en `rule`; limit_type→`limitPowerW`/`limitKwh`+`window`; action notify↔`alert`. **Desviaciones/limitaciones documentadas:** dry-run only (sin efecto físico); `set_limit`-as-schedule/limit y `threshold≤0` → 422; sin `resolveAction` async; estado lógico (no físico confirmado); respuestas **superset** del `openapi.yaml`. Detalle: `docs/implementation/phase-6-summary.md`, `docs/audit/phase-6-{precheck,spec-readiness,control-data-model-audit,openapi-implementation-audit,runtime-verification}.md`, `docs/api/phase-6-device-control.md`, `docs/security/phase-6-control-safety.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F06-00 | Migración **aditiva 0003** (`control_actions.idempotency_key` text + `dry_run` bool default true + UNIQUE parcial `(device_id, idempotency_key)`; no altera enums ni datos); `migrate deploy` OK contra Neon | migración SQL versionada | T-F01-16 | NFR-041; relational-model §Notas Fase 6 |
+| ✅ | T-F06-01 | `control` POST `/devices/{deviceId}/control-actions` (header `Idempotency-Key` opcional; RBAC `ROLES.operate`, viewer→403): **dry-run** (persiste `status='success'`+`dry_run=true`+`result{dry_run}`, API expone `status='dry_run'`; **sin downlink/MQTT**); capability `switch=true` o **409 `DEVICE_NOT_CONTROLLABLE`**; idempotente por `(deviceId, idempotency_key)`; audit `control.requested`+`control.resolved`; `value/source/reason` en `payload` | endpoint `/control-actions` | T-F06-00, T-F02-04, T-F03-01 | FR-CTRL-001/002/009, INV-3/5 |
+| ⏳ | T-F06-02 | resolveAction async (ack/timeout, idempotente) + downlink MQTT — **diferido** (fase futura: canal IoT autenticado por kit; ver `phase-6-control-safety.md`) | resolución | T-F06-01 | FR-CTRL-008 |
+| ✅ | T-F06-03 | GET `/devices/{deviceId}/control-actions` (`status?`/`limit?`) + GET `/control-state` (`{controllable, current_state on/off/unknown **lógico**, last_action, dry_run:true}`; **no físico confirmado**) | endpoints | T-F06-01 | FR-CTRL-003/007 |
+| ✅ | T-F06-04 | POST/GET `/devices/{deviceId}/control-schedules` + PATCH `/control-schedules/{id}` (action turn_on/off; `set_limit`→422; `name/value/cron/starts_at/ends_at` en `rule`; audit created/updated); **NO ejecuta** (sin scheduler, no crea action) | endpoints | T-F06-01 | FR-CTRL-004 |
+| ✅ | T-F06-05 | POST/GET `/devices/{deviceId}/consumption-limits` + PATCH `/consumption-limits/{id}` (limit_type power_w/energy_kwh_day/month → limitPowerW/limitKwh+window; action notify→alert/turn_off; `set_limit`→422; `threshold>0` o 422; audit created/updated); **NO ejecuta** (solo persiste política, no crea action) | endpoints | T-F06-01, T-F05-02 | FR-CTRL-005/006, FR-PROF-005 |
+| ✅ | T-F06-06 | Shared `control.ts` extendido; web client `controlApi` (9 métodos) **preparatorios** (no usados por UI; DEMO_MODE intacto) | contratos + client | T-F06-01..05 | 04-api |
+| ✅ | T-F06-07 | Suite verde contra Neon: API **140/140** (+ 26 control: turn_on/off/set_limit dry-run, 409 no-controlable, viewer 403, cross-tenant 403, idempotencia sin duplicar, audit `control.requested`/`control.resolved`, sin alerts/recommendations, state controllable/unknown/lógico, schedules create/list/patch+viewer/tenant 403+`set_limit` 422+no crea action, limits create/`threshold≤0` 422/list/patch+viewer/tenant 403+no crea action); auditoría OpenAPI ↔ código (paths 1:1, shapes superset) manual | suites + `phase-6-openapi-implementation-audit.md` | T-F06-00..06 | NFR-003/013/014, test-plan §14 |
+| ⏳ | T-F06-08 | Frontend `/control` (ControlToggle optimista, ControlActionLog) y `/smart-control` (ScheduleEditor, ConsumptionLimitForm) — **diferido** (entrega frontend posterior) | páginas | T-F04-*, T-F06-01..05 | FR-CTRL-* |
+
+> **Resumen Fase 6:** módulo `control` (9 endpoints **dry-run**) + migración aditiva 0003 + RBAC/tenant/capability/idempotencia/audit ✅ **PASS** contra Neon real (API 140/140, 0 downlink, 0 side-effects, viewer 403, tenant 403, 409 no-controlable). DEMO_MODE intacto (web client preparatorio). Pendiente (fase futura): downlink MQTT + `resolveAction` async (T-F06-02) y UI (T-F06-08). Precondiciones de control real en `docs/security/phase-6-control-safety.md`. **Fase 7 AUTORIZABLE.**
+
+## FASE 7 — Hardening (implementada)
+
+> **Estado: ✅ PASS (2026-06-04, `feat/phase-7-hardening`).** Hardening transversal sobre Neon real (credencial **rotada**): seguridad (helmet/cors/rate-limit/env/secret-scan), auth hardening (refresh-token rotation + migración aditiva 0004), logger redactado, health/readiness, CI (GitHub Actions), Dockerfiles, smoke y observabilidad. **No se agregaron features de negocio; `apps/web` sigue DEMO_MODE.** **Tests:** API **156/156** (+security 7, health 2, auth-refresh 7), iot-bridge **23/23**, DB **18/18**; typecheck/build/lint verdes (1 warning preexistente).
+> **Leyenda:** ✅ implementado y verificado en verde · ⛔ BLOCKED por entorno · ⏳ pendiente (fase futura). Detalle: `docs/implementation/phase-7-summary.md`, `docs/audit/phase-7-{precheck,runtime-verification,openapi-implementation-audit}.md`, `docs/security/phase-7-secret-rotation.md`, `docs/observability/phase-7-observability.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F07-00 | **Rotación REAL del secreto Neon** (`ALTER ROLE … WITH PASSWORD`, vieja invalidada; nueva solo en `packages/db/.env` gitignored); verificada con `prisma migrate status` | secreto rotado + doc | T-014-01 | NFR-006, GATE-SEC-002 |
+| ✅ | T-F07-01 | **Secret-scan** `scripts/secret-scan.mjs` + script root `security:scan-secrets` (exit 0; en CI) | scanner + script | T-F02-* | NFR-006, GATE-SEC-002 |
+| ✅ | T-F07-02 | **Cabeceras de seguridad** `@fastify/helmet` (`plugins/security-headers.ts`; `x-content-type-options: nosniff` verificado) | plugin | T-F02-01 | NFR-009, GATE-SEC-003 |
+| ✅ | T-F07-03 | **CORS** `@fastify/cors` (`plugins/cors.ts`, `CORS_ORIGINS`; prod rechaza wildcard) | plugin | T-F02-01 | NFR-009, GATE-SEC-003 |
+| ✅ | T-F07-04 | **Rate-limit** `@fastify/rate-limit` (`plugins/rate-limit.ts`, global 300/min + estricto en `/auth/login\|register` y `POST control-actions`; 429 verificado) | plugin | T-F02-03/04, T-F06-01 | NFR-004, GATE-SEC-005 |
+| ✅ | T-F07-05 | **Hardening de config** `config/env.ts` (`loadConfig` puro; rechaza JWT débil/ausente y CORS wildcard en prod) | config | T-F02-01 | NFR-006, GATE-SEC-004 |
+| ✅ | T-F07-06 | **Logger redactado** `config/logger.ts` (pino, `redact.paths`: authorization/cookie/password/tokens/`DATABASE_URL`/etc.) | logger | T-F02-01 | NFR-036 |
+| ✅ | T-F07-07 | **Auth hardening (refresh-token rotation):** migración aditiva **0004** `refresh_tokens` (jti+token_hash sha256); access 15m + refresh 7d; `POST /auth/refresh` rota; reuso revocado → 401 + revoca árbol; logout revoca; `register`/`login` devuelven `token`+`refresh_token` (shape conservado); access sin `passwordHash` | migración + auth | T-F02-03 | FR-AUTH-010, NFR-002 |
+| ✅ | T-F07-08 | **Health/readiness** `health.ts`: `/health`+`/healthz` (liveness `status/service/version/timestamp/uptime_s`), `/readyz` (`SELECT 1` → ready/db ok; 503 degraded), sin secretos | endpoints ops | T-F02-01, T-F01-* | NFR-037 |
+| ✅ | T-F07-09 | **CI GitHub Actions** `.github/workflows/ci.yml` (postgres:16 efímero sin Timescale; `secret-scan→typecheck→lint→build api/web/iot-bridge→migrate:deploy+seed+test:db:external`; no usa Neon) + scripts `ci:verify`/`ci:test:db` | pipeline | T-F07-01, T-F01-* | NFR-041/006, GATE-CI-001 |
+| ⛔ | T-F07-10 | **Dockerfiles** `apps/api/Dockerfile` + `apps/web/Dockerfile` multi-stage + `.dockerignore` (no copia `.env`) — **build de imágenes BLOCKED por entorno** (Docker no disponible local; listos para CI, no FAIL) | imágenes | T-F07-09 | NFR-045, GATE-DEPLOY-001 |
+| ✅ | T-F07-11 | **Smoke E2E** `scripts/smoke-api.mjs` + script root `smoke:api` (7 pasos OK: health/register/login/installation/dashboard/alerts/recommendations) contra API real + Neon | smoke | T-F07-08, T-F02-*..T-F05-* | test-plan §16, GATE-E2E-001 |
+| ✅ | T-F07-12 | **Observabilidad** `docs/observability/phase-7-observability.md` (logging redactado, request-id `x-request-id`, auditoría append-only, métricas vía logs; `/metrics` Prometheus + tracing OpenTelemetry **diferidos**) | docs | T-F07-06 | NFR-036/037/038 |
+| ✅ | T-F07-13 | **Gates de runtime + matrices** actualizados: `runtime-gates.md` (GATE-SEC-002..005, GATE-OPS-001/002, GATE-CI-001, GATE-DEPLOY-001, GATE-E2E-001), `roadmap.md` (F7 PASS, F0–F7 COMPLETO), `traceability-matrix.md` (cobertura Fase 7) | docs + matrices | T-F07-00..12 | criterio de cierre, NFR-045 |
+| ⏳ | T-F07-14 | **Backups/DR, retención Timescale/audit, ciclo de vida de boleta** — **diferido** (Fase 8 / despliegue productivo) | operación de datos | T-F01-* | NFR-019/033/034/035 |
+| ⏳ | T-F07-15 | **Downlink IoT físico** (canal autenticado por kit, ACK/timeout, rollback, rate-limit reforzado) + `/metrics` Prometheus / tracing + reconciliación final `openapi.yaml` — **diferido** (Fase 8, requiere autorización) | fase futura | T-F06-02 | NFR-045, `phase-6-control-safety.md` |
+
+> **Resumen Fase 7:** rotación real del secreto Neon + plugins de seguridad (helmet/cors/rate-limit) + hardening de `env.ts` + refresh-token rotation (migración 0004) + logger redactado + health/readiness + CI (GitHub Actions) + Dockerfiles + secret-scan + smoke + observabilidad + gates ✅ **PASS** contra Neon real (API 156/156, iot-bridge 23/23, DB 18/18). **GATE-DEPLOY-001 (build de imágenes Docker) = BLOCKED por entorno** (Docker no disponible local; Dockerfiles listos para CI — no FAIL). DEMO_MODE intacto. **Roadmap F0–F7 COMPLETO.** Pendiente (Fase 8, requiere autorización): despliegue productivo real + downlink IoT físico (T-F07-14/15).
+
+## FASE 8 / 8.1 — Release / CI / Deployment (READY-BLOCKED)
+
+> **Estado: 🟡 READY-BLOCKED (2026-06-06, `release/smartsense-f0-f7`).** Rama pusheada + CI on-push **PASS** + **PR #1** de revisión abierto; **deploy de API a staging y Vercel preview PENDIENTES** por credenciales de hosting / autorización. Solo documentación + actualización de specs (no se tocó código).
+> **Leyenda:** ✅ hecho · ⏳ pendiente (lo ejecuta el orquestador) · ⛔ bloqueado (autorización/entorno/credenciales).
+> Docs Fase 8.1: `docs/audit/phase-8-1-{precheck,staging-migration,staging-health,staging-smoke,vercel-preview,pr}.md`. Docs Fase 8: `docs/audit/phase-8-{release-precheck,secret-scan,local-validation,ci-result}.md`, `docs/release/{release-f0-f7,release-checklist}.md`, `docs/deployment/{environment-variables,database-migration-runbook,rollback-plan,phase-8-staging-deployment}.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F08-00 | **Rama de release** `release/smartsense-f0-f7` creada desde `feat/phase-7-hardening` (superset lineal F0–F7, 45 commits sobre `master`); working tree limpio; precheck de ramas/divergencia (push como rama, NO master) | rama + `phase-8-release-precheck.md` | T-F07-* | criterio de cierre F8 |
+| ✅ | T-F08-01 | **Secret-scan** pre-release: `pnpm security:scan-secrets` exit 0; `git grep` sin secretos reales; `.env` ignorados; `.env.example` placeholders; rotación Neon (F7) vigente | `phase-8-secret-scan.md` | T-F07-00/01 | NFR-006, GATE-SEC-002 |
+| ✅ | T-F08-02 | **Validación local** consolidada sobre este HEAD: typecheck/lint/build:api/build:web ✅; API 156/156, DB 18/18, iot-bridge 23/23, smoke local 7 pasos ✅; Docker build ⛔ BLOCKED entorno | `phase-8-local-validation.md` | T-F07-* | test-plan §3, GATE-DEPLOY-001 |
+| ✅ | T-F08-03 | **Docs de release**: notas F0–F7 (fases, contrato API, 4 migraciones, CI, deploy pendiente, variables, riesgos, rollback, checklist post-deploy) + checklist de release con estado por ítem | `release-f0-f7.md`, `release-checklist.md` | T-F08-00..02 | release/operación |
+| ✅ | T-F08-04 | **Runbooks de despliegue**: variables por componente (placeholders), runbook de migraciones (`migrate deploy`, no `dev`; seed dev/staging), plan de rollback, despliegue a staging (Opción A/B) | `environment-variables.md`, `database-migration-runbook.md`, `rollback-plan.md`, `phase-8-staging-deployment.md` | T-F08-00..03 | NFR-041/019, deployment |
+| ✅ | T-F08-05 | **Push de la rama de release** a `origin` (rama `release/smartsense-f0-f7`, **NO** master) | push | T-F08-00..04 | criterio de cierre F8 |
+| ✅ | T-F08-06 | **CI** (`.github/workflows/ci.yml` on push: secret-scan→typecheck→lint→build→migrate/seed/test:db; postgres:16 efímero, no Neon) — **PASS** (run `27052719013`) | CI verde | T-F08-05, T-F07-09 | NFR-041/006, GATE-CI-001 |
+| ✅ | T-F08-06b | **PR de revisión** #1 (base `master`, head release) — **solo revisión, sin merge**; riesgo de prod de `master` (Next root que Vercel despliega) documentado en el body | PR #1 + `phase-8-1-pr.md` | T-F08-05 | criterio de cierre F8 |
+| ✅ | T-F08-07 | **Deploy de API** — **resuelto en Fase 8.4 como Vercel Serverless** (`smartsense-api-v2.vercel.app`). El plan original (Railway/Render/Fly + Neon staging) queda **OBSOLETO/superseded**; no se usó host persistente. Ver T-F084-* y `docs/deployment/phase-8-4-vercel-serverless-api.md` | deploy API (Vercel Serverless) | T-F08-06 | GATE-DEPLOY-001/002, phase-8-4 |
+| ⛔ | T-F08-07b | **Migrate staging** (`db:generate && db:migrate:deploy && migrate status` contra `DATABASE_URL` de staging) — READY-BLOCKED (Neon dev ya migrada; staging pendiente del host) | migrate staging | T-F08-07 | NFR-041, `phase-8-1-staging-migration.md` |
+| ⛔ | T-F08-08 | **Smoke + health/readyz remoto** contra staging (`curl <STAGING_API_URL>/health`,`/readyz`; `API_BASE_URL=<STAGING_API_URL> pnpm smoke:api` 7 pasos) — READY-BLOCKED (depende del deploy) | smoke/health remoto | T-F08-07, T-F07-11 | test-plan §16, GATE-E2E-001, `phase-8-1-staging-{health,smoke}.md` |
+| ⛔ | T-F08-09 | **Vercel preview** (web) — previews del push FALLARON (root del monorepo sin app Next); producción INTACTA; cambiar settings rompería prod de `master` → **pendiente de autorización** (proyecto separado a `apps/web` o reconfigurar el existente) | preview web | T-F08-05 | `phase-8-1-vercel-preview.md` |
+
+> **Resumen Fase 8.1:** rama pusheada ✅, **CI PASS** ✅, **PR #1** de revisión (sin merge) ✅, validación local + docs ✅, **producción no tocada** ✅; deploy de API a staging ⛔ (sin credenciales de hosting), de él dependen migrate/health/readyz/smoke remoto ⛔; Vercel preview ⛔ (autorización/riesgo de prod). **Fase 8 = READY-BLOCKED** hacia PASS — el deploy productivo/staging requiere credenciales de hosting y autorización.
+
+## FASE 8.2 — Despliegue controlado (PARTIAL)
+
+> **Estado: 🟡 PARTIAL (2026-06-06, `release/smartsense-f0-f7`, HEAD `8244169`).** Web v2 preview build ✅ (Vercel aislado); API staging ⛔ READY-BLOCKED por credenciales Railway. Solo documentación + specs (no se tocó código).
+> Docs Fase 8.2: `docs/audit/phase-8-2-{execution-precheck,railway-auth,vercel-web-v2-preview,api-staging-railway,pr-update}.md`, `docs/deployment/phase-8-2-{api-staging-manual-render,api-staging-manual-vps,production-cutover-runbook}.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F082-00 | **Precheck de ejecución 8.2**: HEAD `8244169`, tree limpio, PR #1 open, CI PASS, secret-scan exit 0, typecheck verde; API 156/156, DB 18/18, iot-bridge 23/23, smoke local 7 pasos | `phase-8-2-execution-precheck.md` | T-F08-06b | GATE-SEC-002, GATE-CI-001 |
+| ✅ | T-F082-01 | **Web v2 preview** (Vercel **aislado**): proyecto NUEVO `smartsense-web-v2` (scope `cherrera0001s-projects`), `apps/web` linkeado, `NEXT_PUBLIC_DEMO_MODE=true`, `vercel deploy --yes` → **READY**; HTTP 401 = Deployment Protection (acceso owner-auth, no fallo de build); **producción intacta** | `phase-8-2-vercel-web-v2-preview.md` | T-F08-05 | GATE-DEPLOY-001 (web) |
+| ⛔ | T-F082-02 | **Auth Railway**: `railway whoami` Unauthorized; `RAILWAY_TOKEN` ausente (bash+win); `flyctl`/`render` ausentes → **BLOQUEADO**. Acción humana: `railway login` o `RAILWAY_TOKEN` | `phase-8-2-railway-auth.md` | T-F082-00 | GATE-DEPLOY-001 (API) |
+| ⛔ | T-F082-03 | **API staging (Railway)** — **READY-BLOCKED** (sin auth; no se desplegó, no se inventó). Runbook ejecutable listo: init, variables, build/start, `railway up`, domain, migrate deploy, health/readyz/smoke | `phase-8-2-api-staging-railway.md` | T-F082-02 | GATE-DEPLOY-001, GATE-E2E-001 |
+| ✅ | T-F082-04 | **Runbooks staging alternativos** ejecutables: Render (dashboard, health `/health`) y VPS (systemd + nginx + TLS), env vars con placeholders, migrate deploy, smoke remoto | `phase-8-2-api-staging-manual-{render,vps}.md` | T-F082-02 | deployment, GATE-E2E-001 |
+| ✅ | T-F082-05 | **PR #1 comentado** (8.2): comentario ejecutivo (CI PASS, web v2 READY+URL, Railway bloqueado, docs staging listas, prod intacta, merge no autorizado) | `phase-8-2-pr-update.md` | T-F082-01..03 | criterio de cierre F8 |
+| ✅ | T-F082-06 | **Runbook de cutover a producción** (EXIGENTE): orden estricto + checklists ANTES/DURANTE/ROLLBACK (web v2 → API staging → smoke remoto → merge autorizado → Vercel prod root=`apps/web`/mover dominio → rollback; backup Neon; no down destructivas) | `phase-8-2-production-cutover-runbook.md` | T-F082-01..05 | rollback, criterio de cierre F8 |
+| ⛔ | T-F082-07 | **Smoke remoto staging** (`API_BASE_URL=<STAGING> pnpm smoke:api` 7 pasos) — **READY-BLOCKED** (depende de API staging) | smoke remoto | T-F082-03 | GATE-E2E-001 |
+
+> **Resumen Fase 8.2:** web v2 preview build ✅ (Vercel aislado READY; 401 = Deployment Protection, no fallo de build), PR #1 comentado ✅, runbooks staging + cutover ✅, producción no tocada ✅; **API staging ⛔ READY-BLOCKED por credenciales Railway** (`whoami` Unauthorized, `RAILWAY_TOKEN` ausente — no se desplegó, no se inventó) y de ella depende el smoke remoto ⛔. **Fase 8 = PARTIAL** hacia PASS — desbloqueo: `railway login` o `RAILWAY_TOKEN`.
+
+## FASE 8.3 — Paquete de despliegue staging (PARTIAL robusto)
+
+> **Estado: 🟡 PARTIAL robusto (2026-06-06, `release/smartsense-f0-f7`).** Paquete de staging ejecutable listo; web v2 build PASS (acceso BLOCKED-by-protection); API staging URL ⛔ READY-BLOCKED por credenciales. Solo documentación + specs (artefactos `render.yaml`/scripts ya creados; no se reescribieron).
+> Docs Fase 8.3: `docs/audit/phase-8-3-{precheck,vercel-web-v2-access,api-staging-status,pr-update}.md`, `docs/deployment/phase-8-3-{render-blueprint,railway-staging,vps-api-staging}.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F083-00 | **Precheck 8.3**: rama, tree limpio (solo artefactos de deploy), PR #1 open, CI PASS, secret-scan exit 0, typecheck verde; API 156/156, DB 18/18, iot-bridge 23/23 | `phase-8-3-precheck.md` | T-F082-* | GATE-SEC-002, GATE-CI-001 |
+| ✅ | T-F083-01 | **Web v2 acceso**: build PASS verificado con logs (`Next.js 15.5.19`, `Compiled successfully`, `Build Completed`); 401 = Deployment Protection (acceso BLOCKED-by-protection), canónica 404; aclaración dos proyectos (`No Next.js` = `smart-sense-demo` branch-previews, inofensivo); pasos UI desbloqueo | `phase-8-3-vercel-web-v2-access.md` | T-F082-01 | GATE-DEPLOY-003 |
+| ✅ | T-F083-02 | **Render Blueprint** documentado: `render.yaml` (`smartsense-api-staging`, start `tsx`, healthCheck `/health`) + pasos (New→Blueprint→repo→branch→secretos→deploy→migrate→`verify:staging`) | `phase-8-3-render-blueprint.md` | T-F083-00 | GATE-DEPLOY-002 |
+| ✅ | T-F083-03 | **Railway scripts** documentados: `deploy-railway-staging.{sh,ps1}` (no interactivos, falla claro sin auth/token), init/link, variables, up, domain, migrate:deploy, `verify:staging`; nota `tsx` | `phase-8-3-railway-staging.md` | T-F083-00 | GATE-DEPLOY-002 |
+| ✅ | T-F083-04 | **Runbook VPS** ejecutable: Node 22, corepack/pnpm, clone+checkout, `.env` chmod 600, install, `db:migrate:deploy`, systemd (ExecStart `tsx`), nginx + certbot TLS, `/health`/`/readyz`, `verify:staging` | `phase-8-3-vps-api-staging.md` | T-F083-00 | GATE-DEPLOY-002 |
+| ⛔ | T-F083-05 | **API staging URL** — **READY-BLOCKED por credenciales** (railway `whoami` Unauthorized, `RAILWAY_TOKEN`/`flyctl`/`render`/`docker` ausentes; no se desplegó, no se inventó). Acción: `railway login`/`RAILWAY_TOKEN` o Render/VPS | `phase-8-3-api-staging-status.md` | T-F083-02..04 | GATE-DEPLOY-002, GATE-E2E-001 |
+| ⛔ | T-F083-06 | **Smoke remoto** (`STAGING_API_URL=<url> pnpm verify:staging`: `/health` + `/readyz` + smoke E2E) — depende de API staging URL | `verify:staging` | T-F083-05 | GATE-DEPLOY-002, GATE-E2E-001 |
+| ✅ | T-F083-07 | **PR #1 comentado (8.3)**: comentario ejecutivo (web v2 build PASS+protection, aclaración dos proyectos, paquete API staging listo runtime `tsx`, prod no tocada, no mergear) | `phase-8-3-pr-update.md` | T-F083-01..05 | GATE-DEPLOY-004 |
+
+> **Resumen Fase 8.3:** paquete de staging ejecutable ✅ (`render.yaml` + `scripts/deploy-railway-staging.{sh,ps1}` + `verify:staging`, runtime **`tsx`**), web v2 build PASS ✅ (acceso BLOCKED-by-protection), PR #1 comentado ✅, producción no tocada ✅; **API staging URL ⛔ READY-BLOCKED por credenciales** (railway/fly/render/docker no disponibles/no auth — no se desplegó, no se inventó) y de ella depende el smoke remoto ⛔. **OBSOLETO (Fase 8.4):** el host persistente (Railway/Render/VPS) queda **superseded** por Vercel Serverless; los artefactos `render.yaml`/scripts se conservan solo como historia. Gates: GATE-DEPLOY-002..005.
+
+## FASE 8.4 — API en Vercel Serverless ("todo en Vercel") — PASS
+
+> **Estado: ✅ PASS (2026-06-08, `release/smartsense-f0-f7`).** La API (`apps/api`, Fastify) se desplegó como **Vercel Serverless Function** (proyecto Vercel **aislado** `smartsense-api-v2`, alias `https://smartsense-api-v2.vercel.app`, SSO/Deployment Protection desactivado). **Sustituye (OBSOLETO/superseded) a Railway/Render/Fly/VPS/Docker** como host de la API. CI verde en el último push (success), commit `d87765b`; **PR #1 sin merge**; producción antigua `smart-sense-demo` NO tocada.
+> **Leyenda:** ✅ hecho · ⏳ pendiente. Detalle: `docs/deployment/phase-8-4-vercel-serverless-api.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F084-01 | **Handler serverless** `api/index.ts` (monta Fastify cacheado, `server.emit('request')`) + `api/package.json` (`{"type":"module"}`) | función serverless | T-F08-06 | GATE-DEPLOY-001/002 |
+| ✅ | T-F084-02 | **Bundle esbuild** `scripts/bundle-api.mjs` → `api/server.mjs` (inlinea `@smartsense/*`, `@prisma/client` external); `schema.prisma` `binaryTargets += rhel-openssl-3.0.x` | bundle autocontenido | T-F084-01 | NFR-045 |
+| ✅ | T-F084-03 | **`vercel.json`** (`installCommand` con `pnpm install --prod=false` + prisma generate + bundle; `rewrites /(.*)→/api`; `functions.maxDuration=30`) + `public/index.html` (output mínimo) | config Vercel | T-F084-02 | NFR-045 |
+| ✅ | T-F084-04 | **Env de proyecto (production)**: `DATABASE_URL` pooled (`-pooler`, `pgbouncer=true&connection_limit=1`), `DIRECT_URL` (migraciones), `JWT_SECRET`/`JWT_REFRESH_SECRET`, `CORS_ORIGIN` (sin `\n`), `NODE_ENV`, `SERVICE_VERSION`; **SSO desactivado** | env Vercel | T-F084-03 | NFR-006/009 |
+| ✅ | T-F084-05 | **Verificación remota**: `STAGING_API_URL=<url> pnpm verify:staging` → `/health` 200, `/readyz` 200 (`db: ok`, Neon desde la lambda), **smoke E2E 7/7 PASS** | smoke remoto verde | T-F084-04 | GATE-DEPLOY-002, GATE-E2E-001 |
+| ⏳ | T-F084-06 | **Endurecer rate-limit en edge/WAF** (la función serverless no comparte estado entre lambdas → rate-limit de la app desactivado) — diferido | hardening edge | T-F084-05 | NFR-004 |
+
+> **Resumen Fase 8.4:** API desplegada y verificada en **Vercel Serverless** (`smartsense-api-v2.vercel.app`, `/health`+`/readyz` 200, smoke remoto 7/7); Railway/Render/Fly/VPS/Docker para la API = **OBSOLETOS**. **GATE-DEPLOY-001/002 + GATE-E2E-001 remoto = PASS.** Limitaciones serverless: rate-limit desactivado en la función (→ edge/WAF, T-F084-06), sin WebSocket, cold starts. Pendiente de Fase 8: **cutover web** de producción + frontend productivo.
+
+## FASE 8.5 — Spec Compliance Gate (reconciliación documental)
+
+> **Estado: ✅ (2026-06-08).** Reconciliación de los specs de gobierno con la realidad verificada de F0–F7 + Fase 8.4. **Sin cambios de código ni de `openapi.yaml`.**
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F085-01 | Reconciliar host de la API (Railway/Render/Fly/VPS/Docker → **Vercel Serverless**, OBSOLETOS) en runtime-gates/traceability/roadmap/tasks; añadir Fase 8.4/8.5 | specs actualizados | T-F084-05 | GATE-DEPLOY-001/002 |
+| ✅ | T-F085-02 | Documentar **`refresh_tokens` (tabla #22, Fase 7)** en `relational-model.md`/`constraints.md` (token_hash/jti UNIQUE/expires_at/revoked_at/replaced_by_jti/user_id FK CASCADE) | modelo de datos | T-F07-07 | FR-AUTH-010, NFR-002 |
+| ✅ | T-F085-03 | Aclarar **enums nativos PostgreSQL** (no text+CHECK) en el cuerpo de `relational-model.md`/`constraints.md` | notas de implementación | T-F01-19 | TC-006 |
+| ✅ | T-F085-04 | Actualizar `milestones.md` (M-0..M-5/M-8/M-9 DONE; M-6/M-7 PENDIENTE; M-10 PARCIAL) y `validation-matrix.md` (F0–F7 backend VALIDADO; pendientes reales) | hitos + matriz | T-F084-05 | criterio de cierre |
+
+---
+
+## Notas de ejecución
+
+- Toda tarea que modifique esquema entra como migración (NFR-041); ninguna se mergea sin su test (`test-plan.md §3`).
+- Karpathy Loop: tras cada migración/seed, verificar resultado real (aplicar desde cero + correr suite `db`) antes de avanzar.
+- El criterio de cierre de FASE 1 (`roadmap.md`) exige T-F01-29..37 en verde y matrices actualizadas antes de iniciar FASE 2.

@@ -1,0 +1,726 @@
+// SmartSense — Modelo de datos (Fase 1)
+// Fuente de verdad: specs/03-data-model/relational-model.md, constraints.md, indexes.md,
+// specs/_canon.md y specs/07-iot/telemetry-model.md.
+//
+// NOTA IMPORTANTE — Limitaciones de Prisma frente al modelo relacional:
+//  - Los CHECK constraints (no-negatividad, power_factor BETWEEN -1 AND 1, pre_alert_pct,
+//    occupants >= 0, period_end >= period_start, limit_kwh > 0, etc.) NO se expresan en
+//    Prisma; se aplican en la migración SQL manual (prisma/migrations/0001_init/migration.sql).
+//  - La conversión de telemetry_readings a hypertable de TimescaleDB se realiza también en
+//    la migración SQL manual (create_hypertable), con fallback si Timescale no está disponible.
+//  - El tipo citext (users.email) se modela como String en Prisma; la extensión citext y la
+//    columna citext se aplican vía SQL en la migración.
+//  - Los UNIQUE parciales (organizations.legal_id WHERE NOT NULL, energy_kits.serial WHERE
+//    status='active') y los índices parciales (WHERE deleted_at IS NULL / status / enabled)
+//    se crean en la migración SQL manual.
+//  - El UNIQUE compuesto de energy_aggregates requiere NULLS NOT DISTINCT (PG15+); el índice
+//    @@unique de Prisma se complementa/refuerza en SQL.
+//  - El trigger append-only de audit_logs y el trigger genérico set_updated_at se aplican en SQL.
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon: conexión directa (no-pooler) para migraciones. Si DIRECT_URL no se define,
+  // Prisma usa `url`. Ver docs/database/phase-1-external-postgres-verification.md.
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  // native = dev local (Windows). rhel-openssl-3.0.x = runtime de Vercel Serverless Functions
+  // (Fase 8.4: API en Vercel). Necesario para que Prisma cargue su query engine en Vercel.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+// ---------------------------------------------------------------------------
+// Enums canónicos (specs/_canon.md §Enums canónicos) — 14 enums
+// ---------------------------------------------------------------------------
+
+enum InstallationSegment {
+  home
+  smb
+  business
+
+  @@map("installation_segment")
+}
+
+enum MembershipRole {
+  owner
+  admin
+  operator
+  viewer
+
+  @@map("membership_role")
+}
+
+enum PairingStatus {
+  paired
+  recommended
+  scanning
+  unpaired
+  error
+
+  @@map("pairing_status")
+}
+
+enum DeviceState {
+  online
+  offline
+  unknown
+
+  @@map("device_state")
+}
+
+enum ControlActionType {
+  turn_on
+  turn_off
+  set_limit
+
+  @@map("control_action_type")
+}
+
+enum ControlActionStatus {
+  pending
+  success
+  failed
+  rejected
+
+  @@map("control_action_status")
+}
+
+enum AlertSeverity {
+  info
+  warning
+  critical
+
+  @@map("alert_severity")
+}
+
+enum AlertStatus {
+  open
+  reviewed
+  dismissed
+
+  @@map("alert_status")
+}
+
+enum AlertType {
+  anomaly
+  high_device
+  over_budget
+  offline
+
+  @@map("alert_type")
+}
+
+enum RecommendationSource {
+  alert
+  periodic_analysis
+
+  @@map("recommendation_source")
+}
+
+enum BillStatus {
+  uploaded
+  parsed
+  confirmed
+
+  @@map("bill_status")
+}
+
+enum IngestionStatus {
+  accepted
+  duplicate
+  invalid
+
+  @@map("ingestion_status")
+}
+
+enum AggregateGranularity {
+  hour
+  day
+  week
+  month
+
+  @@map("aggregate_granularity")
+}
+
+enum NotificationChannel {
+  in_app
+  email
+  push
+
+  @@map("notification_channel")
+}
+
+// ---------------------------------------------------------------------------
+// Enums auxiliares (estados de tabla no listados en el canon de 14, pero con
+// CHECK IN en el modelo relacional). Se modelan como enums Prisma por limpieza.
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  active
+  suspended
+
+  @@map("user_status")
+}
+
+enum OrganizationPlan {
+  free
+  pro
+  enterprise
+
+  @@map("organization_plan")
+}
+
+enum OrganizationStatus {
+  active
+  suspended
+
+  @@map("organization_status")
+}
+
+enum MembershipStatus {
+  active
+  invited
+  revoked
+
+  @@map("membership_status")
+}
+
+enum InstallationStatus {
+  active
+  inactive
+
+  @@map("installation_status")
+}
+
+enum EnergyKitStatus {
+  unclaimed
+  active
+  transferring
+  retired
+
+  @@map("energy_kit_status")
+}
+
+enum RecommendationStatus {
+  new
+  applied
+  dismissed
+
+  @@map("recommendation_status")
+}
+
+enum ControlScheduleAction {
+  turn_on
+  turn_off
+
+  @@map("control_schedule_action")
+}
+
+enum LimitWindow {
+  day
+  month
+
+  @@map("limit_window")
+}
+
+enum LimitActionOnExceed {
+  alert
+  turn_off
+
+  @@map("limit_action_on_exceed")
+}
+
+// ---------------------------------------------------------------------------
+// Tablas (21)
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique // citext aplicado vía SQL en migración
+  passwordHash String     @map("password_hash")
+  fullName     String     @map("full_name")
+  phone        String?
+  locale       String     @default("es-CL")
+  status       UserStatus @default(active)
+  lastLoginAt  DateTime?  @map("last_login_at") @db.Timestamptz
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships    Membership[]
+  reviewedAlerts Alert[]          @relation("AlertReviewedBy")
+  controlActions ControlAction[]
+  schedules      ControlSchedule[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  refreshTokens  RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  tokenHash     String    @map("token_hash")
+  jti           String    @unique
+  expiresAt     DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz
+  replacedByJti String?   @map("replaced_by_jti")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([jti])
+  @@map("refresh_tokens")
+}
+
+model Organization {
+  id             String             @id @default(uuid()) @db.Uuid
+  name           String
+  legalId        String?            @map("legal_id") // UNIQUE parcial WHERE NOT NULL (SQL)
+  segmentDefault InstallationSegment? @map("segment_default")
+  plan           OrganizationPlan   @default(free)
+  status         OrganizationStatus @default(active)
+  isDemo         Boolean            @default(false) @map("is_demo") // marca de datos demo (desviación documentada Fase 1)
+  deletedAt      DateTime?          @map("deleted_at") @db.Timestamptz
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships   Membership[]
+  installations Installation[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  role           MembershipRole
+  status         MembershipStatus @default(active)
+  invitedAt      DateTime?        @map("invited_at") @db.Timestamptz
+  acceptedAt     DateTime?        @map("accepted_at") @db.Timestamptz
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+model Installation {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  name           String
+  segment        InstallationSegment
+  address        String?
+  timezone       String              @default("America/Santiago")
+  distributorId  String?             @map("distributor_id") @db.Uuid
+  tariffId       String?             @map("tariff_id") @db.Uuid
+  status         InstallationStatus  @default(active)
+  deletedAt      DateTime?           @map("deleted_at") @db.Timestamptz
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization     Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  distributor      Distributor?         @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  tariff           Tariff?              @relation(fields: [tariffId], references: [id], onDelete: Restrict)
+  profile          InstallationProfile?
+  energyKits       EnergyKit[]
+  devices          Device[]
+  // telemetry_readings.installation_id es denormalizado SIN FK (ver TelemetryReading);
+  // no se declara relación Prisma. El scoping por instalación se resuelve vía device.
+  aggregates       EnergyAggregate[]
+  bills            ElectricityBill[]
+  alerts           Alert[]
+  recommendations  Recommendation[]
+  notifications    Notification[]
+
+  @@index([organizationId])
+  @@index([distributorId])
+  @@index([tariffId])
+  @@map("installations")
+}
+
+model InstallationProfile {
+  id             String              @id @default(uuid()) @db.Uuid
+  installationId String              @unique @map("installation_id") @db.Uuid
+  segment        InstallationSegment
+  occupants      Int?                // CHECK >= 0 (SQL)
+  heatingSystem  String?             @map("heating_system")
+  criticalEquipment Json?            @map("critical_equipment")
+  declaredPowerKw Decimal?           @map("declared_power_kw") @db.Decimal(10, 2) // CHECK >= 0 (SQL)
+  operatingHours Json?               @map("operating_hours")
+  extra          Json?
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  installation Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+
+  @@map("installation_profiles")
+}
+
+model EnergyKit {
+  id              String          @id @default(uuid()) @db.Uuid
+  installationId  String?         @map("installation_id") @db.Uuid
+  qrCode          String          @unique @map("qr_code")
+  serial          String
+  model           String?
+  firmwareVersion String?         @map("firmware_version")
+  status          EnergyKitStatus @default(unclaimed)
+  claimedAt       DateTime?       @map("claimed_at") @db.Timestamptz
+  deletedAt       DateTime?       @map("deleted_at") @db.Timestamptz
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  installation Installation?   @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  devices      Device[]
+  pairings     DevicePairing[]
+
+  // UNIQUE parcial UNIQUE(serial) WHERE status='active' aplicado vía SQL (BR-011)
+  @@index([installationId])
+  @@map("energy_kits")
+}
+
+model DeviceCategory {
+  id            String   @id @default(uuid()) @db.Uuid
+  key           String   @unique
+  name          String
+  icon          String?
+  typicalPowerW Decimal? @map("typical_power_w") @db.Decimal(12, 2)
+
+  devices    Device[]
+  aggregates EnergyAggregate[]
+
+  @@map("device_categories")
+}
+
+model Device {
+  id             String      @id @default(uuid()) @db.Uuid
+  kitId          String      @map("kit_id") @db.Uuid
+  installationId String      @map("installation_id") @db.Uuid
+  categoryId     String?     @map("category_id") @db.Uuid
+  name           String
+  externalRef    String      @map("external_ref")
+  capabilities   Json        @default("{}")
+  state          DeviceState @default(unknown)
+  lastSeenAt     DateTime?   @map("last_seen_at") @db.Timestamptz
+  deletedAt      DateTime?   @map("deleted_at") @db.Timestamptz
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  kit          EnergyKit       @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  installation Installation    @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  category     DeviceCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  pairings        DevicePairing[]
+  telemetry       TelemetryReading[]
+  aggregates      EnergyAggregate[]
+  alerts          Alert[]
+  controlActions  ControlAction[]
+  schedules       ControlSchedule[]
+  limits          ConsumptionLimit[]
+
+  @@unique([kitId, externalRef])
+  @@index([installationId])
+  @@index([categoryId])
+  @@map("devices")
+}
+
+model DevicePairing {
+  id                String        @id @default(uuid()) @db.Uuid
+  kitId             String        @map("kit_id") @db.Uuid
+  deviceExternalRef String        @map("device_external_ref")
+  status            PairingStatus
+  deviceId          String?       @map("device_id") @db.Uuid
+  detail            Json?
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  kit    EnergyKit @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  device Device?   @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@index([kitId])
+  @@map("device_pairings")
+}
+
+model TelemetryReading {
+  // Hypertable Timescale particionada por source_timestamp.
+  // PK lógica compuesta (device_id, source_timestamp, reading_id).
+  readingId         String          @map("reading_id") @db.Uuid
+  deviceId          String          @map("device_id") @db.Uuid
+  // kit_id / installation_id denormalizados SIN FK dura (rendimiento de ingesta de alta
+  // cardinalidad; consistencia garantizada por iot-bridge/ACL — ver constraints.md TC-002).
+  kitId             String          @map("kit_id") @db.Uuid
+  installationId    String          @map("installation_id") @db.Uuid
+  sourceTimestamp   DateTime        @map("source_timestamp") @db.Timestamptz
+  receivedTimestamp DateTime        @default(now()) @map("received_timestamp") @db.Timestamptz
+  voltageV          Decimal?        @map("voltage_v") @db.Decimal(8, 2)
+  currentA          Decimal?        @map("current_a") @db.Decimal(10, 3)
+  activePowerW      Decimal?        @map("active_power_w") @db.Decimal(12, 2)
+  reactivePowerVar  Decimal?        @map("reactive_power_var") @db.Decimal(12, 2)
+  apparentPowerVa   Decimal?        @map("apparent_power_va") @db.Decimal(12, 2)
+  powerFactor       Decimal?        @map("power_factor") @db.Decimal(4, 3)
+  energyWhDelta     Decimal?        @map("energy_wh_delta") @db.Decimal(14, 4)
+  frequencyHz       Decimal?        @map("frequency_hz") @db.Decimal(6, 3)
+  signalQuality     Int?            @map("signal_quality")
+  firmwareVersion   String?         @map("firmware_version")
+  ingestionStatus   IngestionStatus @default(accepted) @map("ingestion_status")
+  // Idempotencia lógica. En la hypertable, el índice UNIQUE físico es (event_hash,
+  // source_timestamp) — debe incluir la columna de particionamiento — y se crea en la
+  // migración SQL. Aquí se declara @unique simple para reflejar la intención del modelo.
+  eventHash         String          @unique @map("event_hash")
+  rawPayload        Json?           @map("raw_payload")
+
+  // FK dura solo a devices; kit_id/installation_id sin FK (denormalizados).
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+
+  @@id([deviceId, sourceTimestamp, readingId])
+  @@index([deviceId, sourceTimestamp(sort: Desc)])
+  @@index([installationId, sourceTimestamp(sort: Desc)])
+  @@map("telemetry_readings")
+}
+
+model EnergyAggregate {
+  id             String               @id @default(uuid()) @db.Uuid
+  installationId String               @map("installation_id") @db.Uuid
+  deviceId       String?              @map("device_id") @db.Uuid
+  categoryId     String?              @map("category_id") @db.Uuid
+  granularity    AggregateGranularity
+  bucketStart    DateTime             @map("bucket_start") @db.Timestamptz
+  energyKwh      Decimal              @default(0) @map("energy_kwh") @db.Decimal(14, 4)
+  costClp        BigInt?              @map("cost_clp") @db.BigInt
+  peakPowerW     Decimal?             @map("peak_power_w") @db.Decimal(12, 2)
+  recomputedAt   DateTime             @default(now()) @map("recomputed_at") @db.Timestamptz
+
+  installation Installation    @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  device       Device?         @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  category     DeviceCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // UNIQUE reforzado con NULLS NOT DISTINCT en SQL (PG15+) para tratar device/category NULL.
+  @@unique([installationId, deviceId, categoryId, granularity, bucketStart])
+  @@index([installationId, granularity, bucketStart])
+  @@map("energy_aggregates")
+}
+
+model Distributor {
+  id      String  @id @default(uuid()) @db.Uuid
+  name    String
+  country String  @default("CL")
+  code    String? @unique
+
+  installations Installation[]
+  tariffs       Tariff[]
+  bills         ElectricityBill[]
+
+  @@map("distributors")
+}
+
+model Tariff {
+  id                String               @id @default(uuid()) @db.Uuid
+  distributorId     String?              @map("distributor_id") @db.Uuid
+  code              String
+  name              String
+  segment           InstallationSegment?
+  energyPriceClpKwh Decimal              @map("energy_price_clp_kwh") @db.Decimal(12, 4)
+  fixedChargeClp    BigInt?              @map("fixed_charge_clp") @db.BigInt
+  demandChargeClpKw Decimal?             @map("demand_charge_clp_kw") @db.Decimal(12, 4)
+  validFrom         DateTime?            @map("valid_from") @db.Date
+  validTo           DateTime?            @map("valid_to") @db.Date
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  distributor   Distributor?      @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  installations Installation[]
+  bills         ElectricityBill[]
+
+  @@unique([distributorId, code, validFrom])
+  @@index([distributorId, validFrom(sort: Desc)])
+  @@map("tariffs")
+}
+
+model ElectricityBill {
+  id              String     @id @default(uuid()) @db.Uuid
+  installationId  String     @map("installation_id") @db.Uuid
+  distributorId   String?    @map("distributor_id") @db.Uuid
+  tariffId        String?    @map("tariff_id") @db.Uuid
+  clientNumber    String?    @map("client_number")
+  periodStart     DateTime   @map("period_start") @db.Date
+  periodEnd       DateTime   @map("period_end") @db.Date // CHECK period_end >= period_start (SQL)
+  consumptionKwh  Decimal    @map("consumption_kwh") @db.Decimal(14, 4)
+  totalClp        BigInt     @map("total_clp") @db.BigInt
+  fixedChargeClp  BigInt?    @map("fixed_charge_clp") @db.BigInt
+  variableChargeClp BigInt?  @map("variable_charge_clp") @db.BigInt
+  dueDate         DateTime?  @map("due_date") @db.Date
+  fileUrl         String     @map("file_url")
+  status          BillStatus @default(uploaded)
+  rawExtraction   Json?      @map("raw_extraction")
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  installation Installation @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  distributor  Distributor? @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  tariff       Tariff?      @relation(fields: [tariffId], references: [id], onDelete: Restrict)
+
+  @@index([installationId, periodStart(sort: Desc)])
+  @@index([installationId, status])
+  @@map("electricity_bills")
+}
+
+model Alert {
+  id                 String        @id @default(uuid()) @db.Uuid
+  installationId     String        @map("installation_id") @db.Uuid
+  deviceId           String?       @map("device_id") @db.Uuid
+  type               AlertType
+  severity           AlertSeverity
+  status             AlertStatus   @default(open)
+  message            String
+  context            Json?
+  estimatedImpactClp BigInt?       @map("estimated_impact_clp") @db.BigInt
+  reviewedBy         String?       @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime?     @map("reviewed_at") @db.Timestamptz
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  installation Installation @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  device       Device?      @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  reviewer     User?        @relation("AlertReviewedBy", fields: [reviewedBy], references: [id], onDelete: Restrict)
+
+  recommendations Recommendation[]
+
+  @@index([installationId, status])
+  @@index([deviceId])
+  @@map("alerts")
+}
+
+model Recommendation {
+  id                 String               @id @default(uuid()) @db.Uuid
+  installationId     String               @map("installation_id") @db.Uuid
+  alertId            String?              @map("alert_id") @db.Uuid
+  source             RecommendationSource
+  // type: vocabulario de recomendación del API (reduce_usage|schedule_shift|inspect_device|
+  // tariff_review|standby_reduction). text + validación Zod (añadido en migración 0002).
+  type               String?
+  title              String
+  description        String
+  estimatedSavingClp BigInt?              @map("estimated_saving_clp") @db.BigInt
+  estimatedSavingKwh Decimal?             @map("estimated_saving_kwh") @db.Decimal(14, 4)
+  priority           Int                  @default(0)
+  status             RecommendationStatus @default(new)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  installation Installation @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  alert        Alert?       @relation(fields: [alertId], references: [id], onDelete: Restrict)
+
+  @@index([installationId, status, priority(sort: Desc)])
+  @@index([alertId])
+  @@map("recommendations")
+}
+
+model ControlAction {
+  id          String              @id @default(uuid()) @db.Uuid
+  deviceId    String              @map("device_id") @db.Uuid
+  userId      String              @map("user_id") @db.Uuid
+  type        ControlActionType
+  status      ControlActionStatus @default(pending)
+  // Fase 6: idempotencia por (device_id, idempotency_key) y dry-run (sin downlink físico).
+  // Añadidos en migración 0003. UNIQUE parcial sobre idempotency_key se crea en SQL.
+  idempotencyKey String?         @map("idempotency_key")
+  dryRun         Boolean         @default(true) @map("dry_run")
+  payload     Json?
+  result      Json?
+  requestedAt DateTime            @default(now()) @map("requested_at") @db.Timestamptz
+  resolvedAt  DateTime?           @map("resolved_at") @db.Timestamptz
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([deviceId, requestedAt(sort: Desc)])
+  @@map("control_actions")
+}
+
+model ControlSchedule {
+  id        String                @id @default(uuid()) @db.Uuid
+  deviceId  String                @map("device_id") @db.Uuid
+  action    ControlScheduleAction
+  rule      Json
+  enabled   Boolean               @default(true)
+  createdBy String                @map("created_by") @db.Uuid
+  createdAt DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+
+  device  Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  creator User   @relation(fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@map("control_schedules")
+}
+
+model ConsumptionLimit {
+  id             String              @id @default(uuid()) @db.Uuid
+  deviceId       String              @map("device_id") @db.Uuid
+  limitKwh       Decimal?            @map("limit_kwh") @db.Decimal(14, 4) // CHECK > 0 (SQL)
+  limitPowerW    Decimal?            @map("limit_power_w") @db.Decimal(12, 2) // CHECK > 0 (SQL)
+  window         LimitWindow
+  preAlertPct    Int?                @map("pre_alert_pct") // CHECK BETWEEN 1 AND 100 (SQL)
+  actionOnExceed LimitActionOnExceed @default(alert) @map("action_on_exceed")
+  enabled        Boolean             @default(true)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("consumption_limits")
+}
+
+model Notification {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  installationId String?             @map("installation_id") @db.Uuid
+  userId         String?             @map("user_id") @db.Uuid
+  channel        NotificationChannel
+  title          String
+  body           String
+  readAt         DateTime?           @map("read_at") @db.Timestamptz
+  relatedType    String?             @map("related_type")
+  relatedId      String?             @map("related_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  installation Installation? @relation(fields: [installationId], references: [id], onDelete: Restrict)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, readAt])
+  @@index([organizationId])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String?  @map("user_id") @db.Uuid
+  action         String
+  entityType     String   @map("entity_type")
+  entityId       String?  @map("entity_id") @db.Uuid
+  before         Json?
+  after          Json?
+  ip             String?  @db.Inet
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  user         User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  // Append-only: trigger BEFORE UPDATE OR DELETE que lanza excepción (SQL, BR-061).
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
