@@ -2,7 +2,9 @@
 
 > Cruza cada **NFR** (`01-requirements/non-functional-requirements.md`, 45 NFR) y cada **invariante crítico del canon** (`_canon.md` §Multi-tenant y seguridad) con: cómo se valida, tipo de prueba, criterio de aceptación y estado.
 > Tipos de prueba (alineados a `test-plan.md`): `unit` (Vitest), `integ` (Supertest), `db` (constraints/migraciones), `authz` (RBAC/tenant), `iot` (ingesta MQTT), `ui` (RTL), `e2e` (Playwright), `load` (k6/MQTT), `static` (lint/SAST/secret-scan).
-> Estado: `PENDIENTE` (sin implementación), `EN PROGRESO`, `VALIDADO`. Todos arrancan en `PENDIENTE` (pre-implementación).
+> Estado: `PENDIENTE` (sin implementación), `EN PROGRESO`, `VALIDADO`.
+> **Estado real (2026-06-08, F0–F7 backend en PASS contra Neon real):** los invariantes e NFR cubiertos por suites verdes están **VALIDADOS** en su parte backend: INV-1..9 (suites API/DB/iot-bridge: cross-tenant, RBAC, audit append-only, idempotencia `event_hash`, doble timestamp, rangos físicos, secretos), NFR-001/002/003/004/006/007/008/009/013/014/028/029/030/031/032/036/037/039/040/041 y BR-031. **NFR-026 (Timescale hypertable):** N/A en Neon (sin TimescaleDB → fallback `DO/EXCEPTION`); pendiente en motor con Timescale. **Permanecen PENDIENTE** (no implementado/no medido): NFR-005 (URLs firmadas de boleta), NFR-010/011/012 (privacidad/borrado), NFR-015 (correlation e2e), NFR-016/019 (uptime/backups/DR), NFR-020/021/022/023/024 (carga/latencia/Lighthouse — sin pruebas formales), NFR-025/027 (escalado/EXPLAIN), NFR-033/034/035 (retención), NFR-038 (tracing distribuido), NFR-042/043/044/045 (i18n/regional/responsive/contrato móvil — dependientes de **frontend productivo** y **MQTT productivo**, fases futuras), e INV-10 (empty states UI). El estado por fila se anota en su columna `Estado`; abajo prevalece esta nota de reconciliación.
+> Nota infra: la **API corre en Vercel Serverless** (Fase 8.4); el **rate-limit (NFR-004)** está verificado por tests pero **desactivado en la función serverless** (sin estado compartido entre lambdas) → endurecer en edge/WAF.
 
 ## A. Invariantes críticos de canon
 
@@ -123,4 +125,4 @@
 
 - **Invariantes de canon:** 10/10 con prueba asignada.
 - **NFR:** 45/45 con método de validación, tipo y criterio.
-- Estado global: **PENDIENTE** (pre-implementación). Cada fase del roadmap actualiza esta matriz en su criterio de cierre.
+- Estado global: **PARCIAL (F0–F7 backend VALIDADO)** — los NFR/INV cubiertos por las suites verdes (API 156/156, DB 18/18, iot-bridge 23/23) están validados en su parte backend contra Neon real; permanecen PENDIENTE los que dependen de frontend productivo, MQTT productivo, pruebas de carga/E2E formales, backups/DR y retención (ver nota de reconciliación de la cabecera). Cada fase del roadmap actualiza esta matriz en su criterio de cierre.

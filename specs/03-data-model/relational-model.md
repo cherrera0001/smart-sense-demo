@@ -7,7 +7,7 @@
 - PK `id uuid` (UUIDv7 generado en app) salvo `telemetry_readings`.
 - `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()`.
 - Soft delete: `deleted_at timestamptz NULL` en `organizations`, `installations`, `energy_kits`, `devices`.
-- Enums implementados como `text` + `CHECK` (portabilidad Prisma) o tipos Postgres `ENUM` (decisión en ADR). Aquí se documentan los valores.
+- Enums implementados como `text` + `CHECK` (portabilidad Prisma) o tipos Postgres `ENUM` (decisión en ADR). Aquí se documentan los valores. **Reconciliado (implementación):** la materialización final usa **enums nativos de PostgreSQL/Prisma** (24 enums), no `text+CHECK`; ver §Notas de implementación Fase 1 (c).
 - FKs `ON DELETE RESTRICT` por defecto; `CASCADE` solo donde se indica.
 
 ---
@@ -287,6 +287,8 @@ Constraints: `CHECK(period_end >= period_start)`. Índices: `(installation_id, p
 
 `users`, `organizations`, `memberships`, `installations`, `installation_profiles`, `energy_kits`, `device_categories`, `devices`, `device_pairings`, `telemetry_readings`, `energy_aggregates`, `distributors`, `tariffs`, `electricity_bills`, `alerts`, `recommendations`, `control_actions`, `control_schedules`, `consumption_limits`, `notifications`, `audit_logs`.
 
+> **Tabla adicional Fase 7 (#22):** `refresh_tokens` — añadida por la migración aditiva `0004` para soportar refresh token rotation (no formaba parte del MER de 21 tablas de Fase 1). Ver §Notas de implementación Fase 7.
+
 ## Notas de implementación Fase 1
 
 > Reflejan lo materializado en `packages/db/prisma/schema.prisma` y `packages/db/prisma/migrations/0001_init/migration.sql`. Ver `docs/database/phase-1-db-setup.md`.
@@ -311,3 +313,25 @@ Constraints: `CHECK(period_end >= period_start)`. Índices: `(installation_id, p
 - **(h) `control_actions.idempotency_key text NULL`** — columna añadida para la idempotencia de las acciones de control (header `Idempotency-Key`), no presente en el modelo Fase 1. Acompañada de un **índice único parcial `UNIQUE (device_id, idempotency_key) WHERE idempotency_key IS NOT NULL`**: misma clave por device ⇒ devuelve la acción existente, no duplica. Acciones sin clave no quedan sujetas a la unicidad.
 - **(i) `control_actions.dry_run boolean NOT NULL DEFAULT true`** — columna añadida para marcar la acción como **dry-run** (sin downlink físico). En Fase 6 toda acción es dry-run: persiste `status='success'`+`dry_run=true`+`resolved_at=now`+`result={dry_run:true,...}`; el API serializa `status='dry_run'` (derivado). No se añadió el valor `dry_run` al enum de `status` (evita `ALTER TYPE ADD VALUE` transaccional); el status físico se reconcilia por la columna `dry_run`.
 - **(j) Migración 0003 aditiva y no destructiva.** Solo añade las 2 columnas a `control_actions` (1 NULL + 1 con default) + 1 índice único parcial; **no altera enums ni datos existentes** ni toca `control_schedules`/`consumption_limits`. Aplicada con `migrate deploy` OK contra Neon dev. Los campos `value`/`source`/`reason` de la acción viven en `payload` (jsonb); `name`/`value`/`cron`/`starts_at`/`ends_at` del schedule en `rule` (jsonb); `set_limit`-as-schedule/limit queda diferido (→ 422) en vez de ampliar los enums `control_schedules.action`/`consumption_limits.action_on_exceed`.
+
+## Notas de implementación Fase 7
+
+> Reflejan la **migración aditiva** `packages/db/prisma/migrations/0004_phase7_refresh_tokens/migration.sql` (modelo Prisma `RefreshToken`). Ver `docs/audit/phase-7-runtime-verification.md`, `docs/security/phase-7-secret-rotation.md`.
+
+### refresh_tokens  (tabla #22, Fase 7)
+
+| Columna | Tipo | Constraints |
+|---|---|---|
+| id | uuid | PK |
+| user_id | uuid | NOT NULL, FK→users(id) **ON DELETE CASCADE** |
+| token_hash | text | NOT NULL (sha256 del refresh token; el token plano nunca se persiste) |
+| jti | text | NOT NULL, **UNIQUE** (identificador del token para rotación) |
+| expires_at | timestamptz | NOT NULL |
+| revoked_at | timestamptz | NULL |
+| replaced_by_jti | text | NULL (apunta al `jti` que reemplaza a este en la rotación) |
+| created_at | timestamptz | NOT NULL DEFAULT now() |
+
+Índices: `(user_id)`, `UNIQUE(jti)`.
+
+- **(k) `refresh_tokens` — tabla #22 (no estaba en el MER de 21 tablas de Fase 1).** Añadida para **refresh token rotation** (FR-AUTH-010, NFR-002): cada `POST /auth/refresh` valida `token_hash`, revoca el `jti` usado (`revoked_at`, `replaced_by_jti`) y emite uno nuevo; el reuso de un refresh ya revocado → 401 + revocación del árbol de descendientes; `logout` revoca el refresh activo. FK `ON DELETE CASCADE` desde `users`. Access token 15m, refresh 7d.
+- **(l) Migración 0004 aditiva y no destructiva.** Solo crea la tabla `refresh_tokens` con sus índices; **no altera tablas ni enums existentes**. Aplicada con `migrate deploy` OK contra Neon.

@@ -295,7 +295,7 @@
 | ✅ | T-F08-05 | **Push de la rama de release** a `origin` (rama `release/smartsense-f0-f7`, **NO** master) | push | T-F08-00..04 | criterio de cierre F8 |
 | ✅ | T-F08-06 | **CI** (`.github/workflows/ci.yml` on push: secret-scan→typecheck→lint→build→migrate/seed/test:db; postgres:16 efímero, no Neon) — **PASS** (run `27052719013`) | CI verde | T-F08-05, T-F07-09 | NFR-041/006, GATE-CI-001 |
 | ✅ | T-F08-06b | **PR de revisión** #1 (base `master`, head release) — **solo revisión, sin merge**; riesgo de prod de `master` (Next root que Vercel despliega) documentado en el body | PR #1 + `phase-8-1-pr.md` | T-F08-05 | criterio de cierre F8 |
-| ⛔ | T-F08-07 | **Deploy de API a staging** (Railway/Render/Fly + Neon staging) — **READY-BLOCKED**: sin CLI de hosting autenticado (`railway` sin login interactivo, `flyctl`/`render` ausentes, sin Docker; `vercel`/`gh` sí autenticados) | deploy staging | T-F08-06 | GATE-DEPLOY-001, `phase-8-1-precheck.md` |
+| ✅ | T-F08-07 | **Deploy de API** — **resuelto en Fase 8.4 como Vercel Serverless** (`smartsense-api-v2.vercel.app`). El plan original (Railway/Render/Fly + Neon staging) queda **OBSOLETO/superseded**; no se usó host persistente. Ver T-F084-* y `docs/deployment/phase-8-4-vercel-serverless-api.md` | deploy API (Vercel Serverless) | T-F08-06 | GATE-DEPLOY-001/002, phase-8-4 |
 | ⛔ | T-F08-07b | **Migrate staging** (`db:generate && db:migrate:deploy && migrate status` contra `DATABASE_URL` de staging) — READY-BLOCKED (Neon dev ya migrada; staging pendiente del host) | migrate staging | T-F08-07 | NFR-041, `phase-8-1-staging-migration.md` |
 | ⛔ | T-F08-08 | **Smoke + health/readyz remoto** contra staging (`curl <STAGING_API_URL>/health`,`/readyz`; `API_BASE_URL=<STAGING_API_URL> pnpm smoke:api` 7 pasos) — READY-BLOCKED (depende del deploy) | smoke/health remoto | T-F08-07, T-F07-11 | test-plan §16, GATE-E2E-001, `phase-8-1-staging-{health,smoke}.md` |
 | ⛔ | T-F08-09 | **Vercel preview** (web) — previews del push FALLARON (root del monorepo sin app Next); producción INTACTA; cambiar settings rompería prod de `master` → **pendiente de autorización** (proyecto separado a `apps/web` o reconfigurar el existente) | preview web | T-F08-05 | `phase-8-1-vercel-preview.md` |
@@ -319,6 +319,51 @@
 | ⛔ | T-F082-07 | **Smoke remoto staging** (`API_BASE_URL=<STAGING> pnpm smoke:api` 7 pasos) — **READY-BLOCKED** (depende de API staging) | smoke remoto | T-F082-03 | GATE-E2E-001 |
 
 > **Resumen Fase 8.2:** web v2 preview build ✅ (Vercel aislado READY; 401 = Deployment Protection, no fallo de build), PR #1 comentado ✅, runbooks staging + cutover ✅, producción no tocada ✅; **API staging ⛔ READY-BLOCKED por credenciales Railway** (`whoami` Unauthorized, `RAILWAY_TOKEN` ausente — no se desplegó, no se inventó) y de ella depende el smoke remoto ⛔. **Fase 8 = PARTIAL** hacia PASS — desbloqueo: `railway login` o `RAILWAY_TOKEN`.
+
+## FASE 8.3 — Paquete de despliegue staging (PARTIAL robusto)
+
+> **Estado: 🟡 PARTIAL robusto (2026-06-06, `release/smartsense-f0-f7`).** Paquete de staging ejecutable listo; web v2 build PASS (acceso BLOCKED-by-protection); API staging URL ⛔ READY-BLOCKED por credenciales. Solo documentación + specs (artefactos `render.yaml`/scripts ya creados; no se reescribieron).
+> Docs Fase 8.3: `docs/audit/phase-8-3-{precheck,vercel-web-v2-access,api-staging-status,pr-update}.md`, `docs/deployment/phase-8-3-{render-blueprint,railway-staging,vps-api-staging}.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F083-00 | **Precheck 8.3**: rama, tree limpio (solo artefactos de deploy), PR #1 open, CI PASS, secret-scan exit 0, typecheck verde; API 156/156, DB 18/18, iot-bridge 23/23 | `phase-8-3-precheck.md` | T-F082-* | GATE-SEC-002, GATE-CI-001 |
+| ✅ | T-F083-01 | **Web v2 acceso**: build PASS verificado con logs (`Next.js 15.5.19`, `Compiled successfully`, `Build Completed`); 401 = Deployment Protection (acceso BLOCKED-by-protection), canónica 404; aclaración dos proyectos (`No Next.js` = `smart-sense-demo` branch-previews, inofensivo); pasos UI desbloqueo | `phase-8-3-vercel-web-v2-access.md` | T-F082-01 | GATE-DEPLOY-003 |
+| ✅ | T-F083-02 | **Render Blueprint** documentado: `render.yaml` (`smartsense-api-staging`, start `tsx`, healthCheck `/health`) + pasos (New→Blueprint→repo→branch→secretos→deploy→migrate→`verify:staging`) | `phase-8-3-render-blueprint.md` | T-F083-00 | GATE-DEPLOY-002 |
+| ✅ | T-F083-03 | **Railway scripts** documentados: `deploy-railway-staging.{sh,ps1}` (no interactivos, falla claro sin auth/token), init/link, variables, up, domain, migrate:deploy, `verify:staging`; nota `tsx` | `phase-8-3-railway-staging.md` | T-F083-00 | GATE-DEPLOY-002 |
+| ✅ | T-F083-04 | **Runbook VPS** ejecutable: Node 22, corepack/pnpm, clone+checkout, `.env` chmod 600, install, `db:migrate:deploy`, systemd (ExecStart `tsx`), nginx + certbot TLS, `/health`/`/readyz`, `verify:staging` | `phase-8-3-vps-api-staging.md` | T-F083-00 | GATE-DEPLOY-002 |
+| ⛔ | T-F083-05 | **API staging URL** — **READY-BLOCKED por credenciales** (railway `whoami` Unauthorized, `RAILWAY_TOKEN`/`flyctl`/`render`/`docker` ausentes; no se desplegó, no se inventó). Acción: `railway login`/`RAILWAY_TOKEN` o Render/VPS | `phase-8-3-api-staging-status.md` | T-F083-02..04 | GATE-DEPLOY-002, GATE-E2E-001 |
+| ⛔ | T-F083-06 | **Smoke remoto** (`STAGING_API_URL=<url> pnpm verify:staging`: `/health` + `/readyz` + smoke E2E) — depende de API staging URL | `verify:staging` | T-F083-05 | GATE-DEPLOY-002, GATE-E2E-001 |
+| ✅ | T-F083-07 | **PR #1 comentado (8.3)**: comentario ejecutivo (web v2 build PASS+protection, aclaración dos proyectos, paquete API staging listo runtime `tsx`, prod no tocada, no mergear) | `phase-8-3-pr-update.md` | T-F083-01..05 | GATE-DEPLOY-004 |
+
+> **Resumen Fase 8.3:** paquete de staging ejecutable ✅ (`render.yaml` + `scripts/deploy-railway-staging.{sh,ps1}` + `verify:staging`, runtime **`tsx`**), web v2 build PASS ✅ (acceso BLOCKED-by-protection), PR #1 comentado ✅, producción no tocada ✅; **API staging URL ⛔ READY-BLOCKED por credenciales** (railway/fly/render/docker no disponibles/no auth — no se desplegó, no se inventó) y de ella depende el smoke remoto ⛔. **OBSOLETO (Fase 8.4):** el host persistente (Railway/Render/VPS) queda **superseded** por Vercel Serverless; los artefactos `render.yaml`/scripts se conservan solo como historia. Gates: GATE-DEPLOY-002..005.
+
+## FASE 8.4 — API en Vercel Serverless ("todo en Vercel") — PASS
+
+> **Estado: ✅ PASS (2026-06-08, `release/smartsense-f0-f7`).** La API (`apps/api`, Fastify) se desplegó como **Vercel Serverless Function** (proyecto Vercel **aislado** `smartsense-api-v2`, alias `https://smartsense-api-v2.vercel.app`, SSO/Deployment Protection desactivado). **Sustituye (OBSOLETO/superseded) a Railway/Render/Fly/VPS/Docker** como host de la API. CI verde en el último push (success), commit `d87765b`; **PR #1 sin merge**; producción antigua `smart-sense-demo` NO tocada.
+> **Leyenda:** ✅ hecho · ⏳ pendiente. Detalle: `docs/deployment/phase-8-4-vercel-serverless-api.md`.
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F084-01 | **Handler serverless** `api/index.ts` (monta Fastify cacheado, `server.emit('request')`) + `api/package.json` (`{"type":"module"}`) | función serverless | T-F08-06 | GATE-DEPLOY-001/002 |
+| ✅ | T-F084-02 | **Bundle esbuild** `scripts/bundle-api.mjs` → `api/server.mjs` (inlinea `@smartsense/*`, `@prisma/client` external); `schema.prisma` `binaryTargets += rhel-openssl-3.0.x` | bundle autocontenido | T-F084-01 | NFR-045 |
+| ✅ | T-F084-03 | **`vercel.json`** (`installCommand` con `pnpm install --prod=false` + prisma generate + bundle; `rewrites /(.*)→/api`; `functions.maxDuration=30`) + `public/index.html` (output mínimo) | config Vercel | T-F084-02 | NFR-045 |
+| ✅ | T-F084-04 | **Env de proyecto (production)**: `DATABASE_URL` pooled (`-pooler`, `pgbouncer=true&connection_limit=1`), `DIRECT_URL` (migraciones), `JWT_SECRET`/`JWT_REFRESH_SECRET`, `CORS_ORIGIN` (sin `\n`), `NODE_ENV`, `SERVICE_VERSION`; **SSO desactivado** | env Vercel | T-F084-03 | NFR-006/009 |
+| ✅ | T-F084-05 | **Verificación remota**: `STAGING_API_URL=<url> pnpm verify:staging` → `/health` 200, `/readyz` 200 (`db: ok`, Neon desde la lambda), **smoke E2E 7/7 PASS** | smoke remoto verde | T-F084-04 | GATE-DEPLOY-002, GATE-E2E-001 |
+| ⏳ | T-F084-06 | **Endurecer rate-limit en edge/WAF** (la función serverless no comparte estado entre lambdas → rate-limit de la app desactivado) — diferido | hardening edge | T-F084-05 | NFR-004 |
+
+> **Resumen Fase 8.4:** API desplegada y verificada en **Vercel Serverless** (`smartsense-api-v2.vercel.app`, `/health`+`/readyz` 200, smoke remoto 7/7); Railway/Render/Fly/VPS/Docker para la API = **OBSOLETOS**. **GATE-DEPLOY-001/002 + GATE-E2E-001 remoto = PASS.** Limitaciones serverless: rate-limit desactivado en la función (→ edge/WAF, T-F084-06), sin WebSocket, cold starts. Pendiente de Fase 8: **cutover web** de producción + frontend productivo.
+
+## FASE 8.5 — Spec Compliance Gate (reconciliación documental)
+
+> **Estado: ✅ (2026-06-08).** Reconciliación de los specs de gobierno con la realidad verificada de F0–F7 + Fase 8.4. **Sin cambios de código ni de `openapi.yaml`.**
+
+| Estado | ID | Descripción | Entregable | Dependencias | FR / Spec |
+|---|---|---|---|---|---|
+| ✅ | T-F085-01 | Reconciliar host de la API (Railway/Render/Fly/VPS/Docker → **Vercel Serverless**, OBSOLETOS) en runtime-gates/traceability/roadmap/tasks; añadir Fase 8.4/8.5 | specs actualizados | T-F084-05 | GATE-DEPLOY-001/002 |
+| ✅ | T-F085-02 | Documentar **`refresh_tokens` (tabla #22, Fase 7)** en `relational-model.md`/`constraints.md` (token_hash/jti UNIQUE/expires_at/revoked_at/replaced_by_jti/user_id FK CASCADE) | modelo de datos | T-F07-07 | FR-AUTH-010, NFR-002 |
+| ✅ | T-F085-03 | Aclarar **enums nativos PostgreSQL** (no text+CHECK) en el cuerpo de `relational-model.md`/`constraints.md` | notas de implementación | T-F01-19 | TC-006 |
+| ✅ | T-F085-04 | Actualizar `milestones.md` (M-0..M-5/M-8/M-9 DONE; M-6/M-7 PENDIENTE; M-10 PARCIAL) y `validation-matrix.md` (F0–F7 backend VALIDADO; pendientes reales) | hitos + matriz | T-F084-05 | criterio de cierre |
 
 ---
 

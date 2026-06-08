@@ -6,7 +6,7 @@
 
 - PK por defecto: `id uuid` (UUIDv7 app-side), salvo `telemetry_readings` (PK lógica compuesta).
 - FK por defecto: `ON DELETE RESTRICT`; `ON DELETE CASCADE` solo donde se indica explícitamente.
-- Enums implementados como `text` + `CHECK IN (...)` (portabilidad Prisma).
+- Enums implementados como `text` + `CHECK IN (...)` (portabilidad Prisma). **Reconciliado (implementación):** la materialización final usa **enums nativos de PostgreSQL/Prisma** (24 enums), no `text+CHECK`; los `CHECK IN (...)` documentados abajo describen los **valores válidos** de cada enum (la validación efectiva la da el tipo enum nativo). Los CHECK de dominio numérico/temporal (no-negatividad, rangos, `period_end ≥ period_start`, etc.) sí se aplican como CHECK SQL. Ver `relational-model.md` §Notas de implementación Fase 1 (c).
 - NOT NULL listado solo para columnas clave de negocio (los `created_at`/`updated_at` son NOT NULL DEFAULT now() de forma transversal).
 
 ---
@@ -176,6 +176,18 @@
 - **NOT NULL:** `organization_id`, `action`, `entity_type`, `created_at` (DEFAULT now()).
 - **Vía trigger (BR-061):** trigger `BEFORE UPDATE OR DELETE` que lanza excepción → tabla append-only (sin UPDATE/DELETE). Revocar además privilegios UPDATE/DELETE a nivel de rol de aplicación.
 
+## refresh_tokens (tabla #22 — Fase 7, migración aditiva 0004)
+
+> Añadida en Fase 7 para refresh token rotation (FR-AUTH-010/NFR-002); no formaba parte del MER de 21 tablas de Fase 1. Ver `relational-model.md` §Notas de implementación Fase 7.
+
+- **PK:** `id`.
+- **FK:** `user_id → users(id)` **ON DELETE CASCADE**.
+- **UNIQUE:** `jti`.
+- **NOT NULL:** `user_id`, `token_hash` (sha256; token plano nunca persistido), `jti`, `expires_at`, `created_at` (DEFAULT now()).
+- **NULL:** `revoked_at`, `replaced_by_jti` (apunta al `jti` que reemplaza a este en la rotación).
+- **Índices:** `(user_id)`, `UNIQUE(jti)`.
+- **Vía dominio:** reuso de un refresh ya revocado (`revoked_at` no nulo) → 401 + revocación del árbol de descendientes; `logout` revoca el refresh activo.
+
 ---
 
 ## Constraints transversales / multi-tenant
@@ -185,6 +197,6 @@
 - **TC-003 — Auditoría obligatoria de acciones sensibles:** control remoto (`control_actions`), cambios de rol (`memberships`), claim/transfer de kit (`energy_kits`) y confirmación de boleta (`electricity_bills`) deben generar fila en `audit_logs` desde el servicio de dominio.
 - **TC-004 — Inmutabilidad de auditoría:** trigger append-only sobre `audit_logs` (TC + BR-061).
 - **TC-005 — Soft delete consistente:** entidades con `deleted_at` (`organizations`, `installations`, `energy_kits`, `devices`) se filtran por `deleted_at IS NULL` en todas las queries operativas; los UNIQUE parciales relevantes consideran solo filas no borradas cuando corresponda.
-- **TC-006 — Enums sincronizados:** todos los `CHECK IN (...)` reflejan exactamente los enums de `_canon.md`; cambiar un enum requiere migración coordinada del CHECK y del código TypeScript.
+- **TC-006 — Enums sincronizados:** todos los valores enumerados reflejan exactamente los enums de `_canon.md`. **Reconciliado (implementación):** los enums se materializaron como **enums nativos de PostgreSQL/Prisma** (no `text+CHECK`); cambiar un enum requiere migración coordinada del tipo enum nativo (`ALTER TYPE`) y del código TypeScript.
 - **TC-007 — Idempotencia de ingesta y agregación:** `UNIQUE(event_hash)` en telemetría y `UNIQUE(installation_id, device_id, category_id, granularity, bucket_start)` en agregados garantizan reprocesos sin duplicar.
 - **TC-008 — Dinero en CLP entero:** columnas `*_clp` son `bigint` (sin decimales) con `CHECK >= 0` donde aplique; precios de tarifa usan `numeric(12,4)`.
